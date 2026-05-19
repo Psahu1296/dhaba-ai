@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Security, Request
@@ -34,11 +35,13 @@ async def lifespan(app: FastAPI):
     await login()
     logger.info("Logged into Bill-App")
 
-    try:
-        await embed_menu()
-        logger.info("Menu embedded into ChromaDB")
-    except Exception as e:
-        logger.warning(f"Menu embedding skipped: {e}")
+    async def _bg_embed():
+        try:
+            await embed_menu()
+        except Exception as e:
+            logger.warning(f"Menu embedding skipped: {e}")
+
+    asyncio.create_task(_bg_embed())
 
     scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
     scheduler.add_job(embed_day, CronTrigger(hour=0, minute=30))
