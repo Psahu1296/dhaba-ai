@@ -27,7 +27,9 @@ async def get_top_dishes(limit: int = 5) -> str:
 
 @tool
 async def get_dashboard_kpis() -> str:
-    """Get today's business KPIs — revenue, orders, percentage change."""
+    """Get revenue totals for ALL periods: today, this week, this month, this year — plus % change vs previous period.
+    Use this for ANY revenue question: how much today, this week, this month, this year.
+    This is the ONLY accurate revenue source — do not use get_revenue or get_earnings_history for current period totals."""
     result = await _kpis()
     return codec.encode_tool_result("get_dashboard_kpis", result)
 
@@ -86,9 +88,10 @@ async def get_peak_hours_today(date: str = None) -> str:
 
 @tool
 async def get_earnings_history(period: str = "day", num_periods: int = 7) -> str:
-    """Get earnings over multiple periods as a time series with best/worst period pre-identified.
-    period: 'day', 'week', 'month', 'year'. num_periods: how many periods back.
-    Use for: revenue trends, best/worst week, slowest month, historical performance comparison."""
+    """Get historical earnings trend as a time series — best/worst periods pre-identified.
+    period: 'day', 'week', 'month', 'year'. num_periods: how many periods back (default 7).
+    Use ONLY for: trends over time, best/worst week ever, comparing multiple past months.
+    Do NOT use for current period totals — use get_dashboard_kpis for that."""
     result = await _earnings_history(period, num_periods)
     return codec.encode_tool_result("get_earnings_history", result)
 

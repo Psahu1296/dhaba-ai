@@ -31,9 +31,9 @@ Seating capacity: 40–50 people
 - Today's top selling items → get_todays_top_items
 - Peak hours / busiest time today → get_peak_hours_today
 - All-time historical bestsellers → get_top_dishes
-- Revenue for a period → get_revenue (period: day/week/month/year)
-- Revenue trends over time → get_earnings_history
-- Quick today snapshot (revenue + orders) → get_dashboard_kpis
+- Revenue for today / this week / this month / this year → get_dashboard_kpis (most accurate — reads live orders)
+- Revenue trends over time / historical comparison → get_earnings_history
+- NEVER use get_revenue for "how much did we earn" questions — use get_dashboard_kpis instead
 - List veg dishes, list non-veg, full menu, filter by price → get_all_dishes
 - Look up a specific dish by name or ingredient → search_dishes
 - Orders on a specific date → get_orders

@@ -66,11 +66,22 @@ def slim_top_dishes(result) -> list:
 
 
 def slim_kpis(result: dict) -> dict:
+    data = result.get("data", result)
+    if isinstance(data, dict) and "daily" in data:
+        return {
+            "today": data["daily"].get("total"),
+            "today_pct_change": data["daily"].get("percentageChange"),
+            "weekly": data["weekly"].get("total") if "weekly" in data else None,
+            "weekly_pct_change": data["weekly"].get("percentageChange") if "weekly" in data else None,
+            "monthly": data["monthly"].get("total") if "monthly" in data else None,
+            "monthly_pct_change": data["monthly"].get("percentageChange") if "monthly" in data else None,
+            "yearly": data["yearly"].get("total") if "yearly" in data else None,
+        }
     return {
-        "today_earning": result.get("todayEarning") or result.get("today_earning"),
-        "pct_change": result.get("percentageChange") or result.get("percentage_change"),
-        "order_count": result.get("totalOrders") or result.get("order_count") or result.get("orderCount"),
-        "customer_count": result.get("customerCount") or result.get("customer_count"),
+        "today_earning": data.get("todayEarning") or data.get("today_earning"),
+        "pct_change": data.get("percentageChange") or data.get("percentage_change"),
+        "order_count": data.get("totalOrders") or data.get("order_count") or data.get("orderCount"),
+        "customer_count": data.get("customerCount") or data.get("customer_count"),
     }
 
 
