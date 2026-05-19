@@ -6,7 +6,7 @@ import { BotMessageSquare, BarChart3, UtensilsCrossed, Banknote, PackageOpen, Sp
 import type { Mode } from './types'
 
 export default function App() {
-  const { messages, mode, setMode, isLoading, sessionId, sendMessage, clearChat } = useChat()
+  const { messages, mode, setMode, isLoading, sessionId, sendMessage, clearChat, stopGeneration } = useChat()
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -94,7 +94,7 @@ export default function App() {
       {/* Messages */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 md:px-8 py-10 scrollbar-thin z-0 relative flex flex-col items-center w-full">
         {messages.length === 0 ? (
-          <EmptyState />
+          <EmptyState onSend={sendMessage} />
         ) : (
           <div className="w-full max-w-4xl flex flex-col gap-5 pb-8">
             {messages.map(m => <MessageBubble key={m.id} message={m} />)}
@@ -106,14 +106,19 @@ export default function App() {
       {/* Input */}
       <div className="shrink-0 relative z-10 flex justify-center w-full px-4 sm:px-6 md:px-8 pb-8">
         <div className="w-full max-w-4xl">
-          <InputBar onSend={sendMessage} isLoading={isLoading} />
+          <InputBar
+            onSend={sendMessage}
+            onStop={stopGeneration}
+            isLoading={isLoading}
+            hasMessages={messages.length > 0}
+          />
         </div>
       </div>
     </div>
   )
 }
 
-function EmptyState() {
+function EmptyState({ onSend }: { onSend: (text: string) => void }) {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center gap-10 w-full max-w-4xl animate-fade-in mx-auto mt-10">
       <div className="relative group cursor-default">
@@ -134,13 +139,14 @@ function EmptyState() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-6 w-full max-w-3xl">
         {[
-          { icon: <BarChart3 size={24} strokeWidth={2} />, title: 'Business Report', desc: 'Full performance & analytics overview' },
-          { icon: <UtensilsCrossed size={24} strokeWidth={2} />, title: 'Menu Insights', desc: 'Find top-performing dishes & prices' },
-          { icon: <Banknote size={24} strokeWidth={2} />, title: 'Revenue & KPIs', desc: 'Track daily earnings & profit margins' },
-          { icon: <PackageOpen size={24} strokeWidth={2} />, title: 'Orders & Expenses', desc: 'Monitor latest costs and stock levels' },
-        ].map(({ icon, title, desc }) => (
-          <div
+          { icon: <BarChart3 size={24} strokeWidth={2} />, title: 'Business Report', desc: 'Full performance & analytics overview', query: "Give me today's full business report" },
+          { icon: <UtensilsCrossed size={24} strokeWidth={2} />, title: 'Menu Insights', desc: 'Find top-performing dishes & prices', query: 'What are the top 5 selling dishes overall?' },
+          { icon: <Banknote size={24} strokeWidth={2} />, title: 'Revenue & KPIs', desc: 'Track daily earnings & profit margins', query: "What are today's revenue and KPIs?" },
+          { icon: <PackageOpen size={24} strokeWidth={2} />, title: 'Orders & Expenses', desc: 'Monitor latest costs and stock levels', query: "Show me today's orders and expenses summary" },
+        ].map(({ icon, title, desc, query }) => (
+          <button
             key={title}
+            onClick={() => onSend(query)}
             className="group relative overflow-hidden rounded-2xl p-6 flex items-start gap-5 border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-300 cursor-pointer text-left hover:border-orange-500/30 hover:shadow-[0_8px_30px_rgba(249,115,22,0.1)]"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -157,7 +163,7 @@ function EmptyState() {
                 {desc}
               </p>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>

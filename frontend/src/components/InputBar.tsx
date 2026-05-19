@@ -1,26 +1,26 @@
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { SendHorizontal } from 'lucide-react'
+import { SendHorizontal, StopCircle } from 'lucide-react'
 
 interface Props {
   onSend: (text: string) => void
+  onStop: () => void
   isLoading: boolean
+  hasMessages: boolean
 }
 
 const SUGGESTIONS = [
-  'Give me today\'s business report',
+  "Give me today's business report",
   'What veg dishes are under ₹50?',
   'What are the top 3 dishes?',
   'How much did we earn this month?',
 ]
 
-export function InputBar({ onSend, isLoading }: Props) {
+export function InputBar({ onSend, onStop, isLoading, hasMessages }: Props) {
   const [value, setValue] = useState('')
-  const [showSuggestions, setShowSuggestions] = useState(true)
 
   function handleSend() {
     if (!value.trim() || isLoading) return
-    setShowSuggestions(false)
     onSend(value.trim())
     setValue('')
   }
@@ -32,19 +32,14 @@ export function InputBar({ onSend, isLoading }: Props) {
     }
   }
 
-  function handleSuggestion(s: string) {
-    setShowSuggestions(false)
-    onSend(s)
-  }
-
   return (
     <div className="w-full flex flex-col gap-4">
-      {showSuggestions && (
+      {!hasMessages && (
         <div className="flex flex-wrap gap-2.5 w-full">
           {SUGGESTIONS.map(s => (
             <button
               key={s}
-              onClick={() => handleSuggestion(s)}
+              onClick={() => onSend(s)}
               className="text-[13px] font-medium px-4 py-2.5 rounded-[1.25rem] border border-white/10 bg-white/[0.03] text-zinc-300 hover:border-orange-500/50 hover:text-white hover:bg-orange-500/10 hover:shadow-[0_0_15px_rgba(249,115,22,0.2)] transition-all duration-300"
             >
               {s}
@@ -69,12 +64,16 @@ export function InputBar({ onSend, isLoading }: Props) {
           }}
         />
         <button
-          onClick={handleSend}
-          disabled={isLoading || !value.trim()}
-          className="w-14 h-14 rounded-[1.1rem] bg-gradient-to-br from-orange-500 to-amber-600 disabled:from-zinc-800 disabled:to-zinc-900 disabled:text-zinc-600 text-white disabled:cursor-not-allowed disabled:shadow-none hover:shadow-[0_8px_20px_rgba(249,115,22,0.4)] transition-all duration-300 flex items-center justify-center shrink-0 disabled:opacity-50"
+          onClick={isLoading ? onStop : handleSend}
+          disabled={!isLoading && !value.trim()}
+          className={`w-14 h-14 rounded-[1.1rem] transition-all duration-300 flex items-center justify-center shrink-0 ${
+            isLoading
+              ? 'bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 cursor-pointer'
+              : 'bg-gradient-to-br from-orange-500 to-amber-600 disabled:from-zinc-800 disabled:to-zinc-900 disabled:text-zinc-600 text-white disabled:cursor-not-allowed disabled:opacity-50 hover:shadow-[0_8px_20px_rgba(249,115,22,0.4)]'
+          }`}
         >
           {isLoading ? (
-            <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            <StopCircle size={22} strokeWidth={2} />
           ) : (
             <SendHorizontal size={22} strokeWidth={2.5} className="ml-1" />
           )}

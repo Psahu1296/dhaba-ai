@@ -110,11 +110,15 @@ export function useChat() {
     ))
   }
 
+  function stopGeneration() {
+    abortRef.current?.abort()
+  }
+
   function clearChat() {
     setMessages([])
     setSessionId(null)
     abortRef.current?.abort()
   }
 
-  return { messages, mode, setMode, isLoading, sessionId, sendMessage, clearChat }
+  return { messages, mode, setMode, isLoading, sessionId, sendMessage, clearChat, stopGeneration }
 }
