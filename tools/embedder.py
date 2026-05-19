@@ -2,9 +2,11 @@ import json
 import asyncio
 import chromadb
 from openai import OpenAI
+from config import EMBED_BASE_URL, EMBED_MODEL, EMBED_API_KEY
 from tools.bill_app import login, get_all_dishes
 
-_embed_client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+_embed_client = OpenAI(base_url=EMBED_BASE_URL, api_key=EMBED_API_KEY)
+
 _chroma = chromadb.PersistentClient(path="./chroma_db")
 
 
@@ -29,7 +31,7 @@ def _dish_to_text(dish: dict) -> str:
 
 def _embed(text: str) -> list[float]:
     response = _embed_client.embeddings.create(
-        model="nomic-embed-text", input=text
+        model=EMBED_MODEL, input=text
     )
     return response.data[0].embedding
 
