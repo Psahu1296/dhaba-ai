@@ -52,18 +52,22 @@ async def embed_menu(force: bool = False):
         collection.delete(ids=existing["ids"])
         logger.info(f"Cleared {len(existing['ids'])} old menu embeddings")
 
-    ids, documents, embeddings, metadatas = [], [], [], []
+    ids, documents, metadatas = [], [], []
 
     for i, dish in enumerate(dishes):
-        text = _dish_to_text(dish)
         ids.append(dish.get("name", f"dish_{i}"))
-        documents.append(text)
-        embeddings.append(_embed(text))
+        documents.append(_dish_to_text(dish))
         metadatas.append({
             "name": dish.get("name", ""),
             "category": dish.get("category", ""),
             "type": dish.get("type", ""),
         })
+
+    # Batch all dishes in one API call instead of 48 sequential calls
+    response = await asyncio.to_thread(
+        lambda: _embed_client.embeddings.create(model=EMBED_MODEL, input=documents)
+    )
+    embeddings = [item.embedding for item in response.data]
 
     collection.add(ids=ids, documents=documents, embeddings=embeddings, metadatas=metadatas)
     logger.info(f"Menu embedded — {len(dishes)} dishes stored in ChromaDB")
