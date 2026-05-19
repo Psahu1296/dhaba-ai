@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
 import type { Message, Mode } from '../types'
 
+const TOON_SAVED_RE = /\[TOON_SAVED:(\d+)\]$/
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8001'
 const API_KEY = import.meta.env.VITE_API_KEY ?? 'dhaba-secret-key-2024'
 
@@ -13,6 +15,7 @@ export function useChat() {
   const [mode, setMode] = useState<Mode>('agent')
   const [isLoading, setIsLoading] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [totalCharsSaved, setTotalCharsSaved] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
 
   const sendMessage = useCallback(async (text: string) => {
@@ -64,9 +67,15 @@ export function useChat() {
       }
     }
 
-    setMessages(prev => prev.map(m =>
-      m.id === assistantId ? { ...m, isStreaming: false } : m
-    ))
+    setMessages(prev => prev.map(m => {
+      if (m.id !== assistantId) return m
+      const match = m.content.match(TOON_SAVED_RE)
+      if (match) {
+        setTotalCharsSaved(s => s + parseInt(match[1]))
+        return { ...m, content: m.content.replace(TOON_SAVED_RE, '').trimEnd(), isStreaming: false }
+      }
+      return { ...m, isStreaming: false }
+    }))
   }
 
   async function sendAgent(text: string) {
@@ -105,9 +114,15 @@ export function useChat() {
       }
     }
 
-    setMessages(prev => prev.map(m =>
-      m.id === assistantId ? { ...m, isStreaming: false } : m
-    ))
+    setMessages(prev => prev.map(m => {
+      if (m.id !== assistantId) return m
+      const match = m.content.match(TOON_SAVED_RE)
+      if (match) {
+        setTotalCharsSaved(s => s + parseInt(match[1]))
+        return { ...m, content: m.content.replace(TOON_SAVED_RE, '').trimEnd(), isStreaming: false }
+      }
+      return { ...m, isStreaming: false }
+    }))
   }
 
   function stopGeneration() {
@@ -117,8 +132,9 @@ export function useChat() {
   function clearChat() {
     setMessages([])
     setSessionId(null)
+    setTotalCharsSaved(0)
     abortRef.current?.abort()
   }
 
-  return { messages, mode, setMode, isLoading, sessionId, sendMessage, clearChat, stopGeneration }
+  return { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, clearChat, stopGeneration }
 }

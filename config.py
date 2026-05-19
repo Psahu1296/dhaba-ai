@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+import logging as _logging
 
 load_dotenv()
 
@@ -19,4 +20,4 @@ EMBED_API_KEY = os.getenv("EMBED_API_KEY", OPENAI_API_KEY or "ollama")
 
 _missing = [k for k, v in {"BILL_APP_EMAIL": BILL_APP_EMAIL, "BILL_APP_PASSWORD": BILL_APP_PASSWORD, "API_KEY": API_KEY}.items() if not v]
 if _missing:
-    raise RuntimeError(f"Missing required environment variables: {', '.join(_missing)}")
+    _logging.warning(f"Missing env vars (app will start but tools may fail): {', '.join(_missing)}")

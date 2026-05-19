@@ -4,6 +4,7 @@ from llm import chat, chat_stream
 from tools.definitions import TOOLS
 from tools.bill_app import login, get_top_dishes, get_dashboard_kpis, get_orders, get_expenses, get_customer_balance, get_revenue
 from tools.retriever import search_dishes
+from tools import codec
 
 
 TOOL_MAP = {
@@ -24,7 +25,8 @@ def _base_messages(user_message: str) -> list[dict]:
             "content": (
                 "You are a helpful assistant for a dhaba (Indian restaurant). "
                 "Use the available tools to answer questions about the business. "
-                "Always use tools when asked about dishes, revenue, or orders."
+                "Always use tools when asked about dishes, revenue, or orders. "
+                "Tool results use TOON format — a compact notation for LLMs. Read tabular rows as structured records."
             ),
         },
         {"role": "user", "content": user_message},
@@ -74,7 +76,7 @@ async def _resolve_tools(user_message: str) -> list[dict]:
         messages.append({
             "role": "tool",
             "tool_call_id": call_id,
-            "content": json.dumps(result),
+            "content": codec.encode_tool_result(name, result),
         })
 
     return messages
@@ -82,9 +84,9 @@ async def _resolve_tools(user_message: str) -> list[dict]:
 
 # Non-streaming — returns full answer string
 async def run_agent(user_message: str) -> str:
+    codec.reset()
     messages = await _resolve_tools(user_message)
     last = messages[-1]
-    # If last message is already assistant (no tool was called), return it
     if last.get("role") == "assistant":
         return last["content"]
     final = await chat(messages)
@@ -93,14 +95,20 @@ async def run_agent(user_message: str) -> str:
 
 # Streaming — yields tokens as LLM generates them
 async def run_agent_stream(user_message: str):
+    codec.reset()
     messages = await _resolve_tools(user_message)
     last = messages[-1]
     if last.get("role") == "assistant":
-        # No tool was called — yield the existing content as one chunk
         yield last["content"]
+        saved = codec.total_chars_saved()
+        if saved > 0:
+            yield f"\n[TOON_SAVED:{saved}]"
         return
     async for token in chat_stream(messages):
         yield token
+    saved = codec.total_chars_saved()
+    if saved > 0:
+        yield f"\n[TOON_SAVED:{saved}]"
 
 
 async def main():

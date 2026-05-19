@@ -15,6 +15,7 @@ from config import API_KEY
 from tools.bill_app import login, get_top_dishes, get_dashboard_kpis
 from tools.daily_embedder import embed_day
 from tools.embedder import embed_menu
+from tools import codec
 from agent import run_agent, run_agent_stream
 from graph import run_graph, run_graph_stream
 
@@ -98,7 +99,7 @@ async def kpis():
 @app.post("/chat", dependencies=[Depends(require_api_key)])
 async def chat(req: ChatRequest):
     answer = await run_agent(req.message)
-    return {"answer": answer}
+    return {"answer": answer, "toon_chars_saved": codec.total_chars_saved()}
 
 
 @app.post("/chat/stream", dependencies=[Depends(require_api_key)])
@@ -113,7 +114,7 @@ async def chat_stream_endpoint(req: ChatRequest):
 async def agent_chat(req: ChatRequest):
     thread_id = req.session_id or str(uuid.uuid4())
     answer = await run_graph(req.message, thread_id)
-    return {"answer": answer, "session_id": thread_id}
+    return {"answer": answer, "session_id": thread_id, "toon_chars_saved": codec.total_chars_saved()}
 
 
 @app.post("/agent/chat/stream", dependencies=[Depends(require_api_key)])

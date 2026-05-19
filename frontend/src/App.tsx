@@ -2,11 +2,11 @@ import { useEffect, useRef } from 'react'
 import { useChat } from './hooks/useChat'
 import { MessageBubble } from './components/MessageBubble'
 import { InputBar } from './components/InputBar'
-import { BotMessageSquare, BarChart3, UtensilsCrossed, Banknote, PackageOpen, Sparkles, BrainCircuit, Zap } from 'lucide-react'
+import { BotMessageSquare, BarChart3, UtensilsCrossed, Banknote, PackageOpen, Sparkles, BrainCircuit, Zap, Leaf } from 'lucide-react'
 import type { Mode } from './types'
 
 export default function App() {
-  const { messages, mode, setMode, isLoading, sessionId, sendMessage, clearChat, stopGeneration } = useChat()
+  const { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, clearChat, stopGeneration } = useChat()
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -76,11 +76,6 @@ export default function App() {
             <>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
               <span className="text-zinc-400">LANGGRAPH AGENT <span className="text-zinc-600 mx-2">/</span> MULTI-STEP REASONING <span className="text-zinc-600 mx-2">/</span> MEMORY ENABLED</span>
-              {sessionId && (
-                <span className="ml-auto font-mono text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md border border-white/5">
-                  SESSION: {sessionId.slice(0, 8)}
-                </span>
-              )}
             </>
           ) : (
             <>
@@ -88,6 +83,19 @@ export default function App() {
               <span className="text-zinc-400">STREAMING MODE <span className="text-zinc-600 mx-2">/</span> LIVE TOKENS <span className="text-zinc-600 mx-2">/</span> NO MEMORY</span>
             </>
           )}
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            {mode === 'agent' && sessionId && (
+              <span className="font-mono text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md border border-white/5">
+                SESSION: {sessionId.slice(0, 8)}
+              </span>
+            )}
+            {totalCharsSaved > 0 && (
+              <span className="flex items-center gap-1.5 font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
+                <Leaf size={10} strokeWidth={2.5} />
+                ~{Math.round(totalCharsSaved / 4).toLocaleString()} tokens saved
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

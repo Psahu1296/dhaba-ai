@@ -4,8 +4,11 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from config import OPENAI_API_KEY, OPENAI_BASE_URL, LLM_MODEL
 from tools.lc_tools import ALL_TOOLS
+from tools import codec
 
-SYSTEM_PROMPT = SystemMessage(content="""You are the AI business assistant for Sahu Family Dhaba.
+SYSTEM_PROMPT = SystemMessage(content="""Tool results use TOON format — a compact notation designed for LLMs. Read tabular rows as structured records with the headers defined at the top.
+
+You are the AI business assistant for Sahu Family Dhaba.
 
 ## About This Dhaba
 Name: Sahu Family Dhaba
@@ -74,7 +77,7 @@ def should_continue(state: MessagesState) -> str:
 
 
 async def call_llm(state: MessagesState):
-    messages = [SYSTEM_PROMPT] + state["messages"]
+    messages = [SYSTEM_PROMPT] + state["messages"][-8:]
     response = await _llm_with_tools.ainvoke(messages)
     return {"messages": [response]}
 
@@ -93,6 +96,7 @@ graph = workflow.compile(checkpointer=_checkpointer)
 
 
 async def run_graph(message: str, thread_id: str) -> str:
+    codec.reset()
     config = {"configurable": {"thread_id": thread_id}}
     result = await graph.ainvoke(
         {"messages": [{"role": "user", "content": message}]},
@@ -102,6 +106,7 @@ async def run_graph(message: str, thread_id: str) -> str:
 
 
 async def run_graph_stream(message: str, thread_id: str):
+    codec.reset()
     config = {"configurable": {"thread_id": thread_id}}
     async for chunk, metadata in graph.astream(
         {"messages": [{"role": "user", "content": message}]},
@@ -116,4 +121,7 @@ async def run_graph_stream(message: str, thread_id: str):
             and not getattr(chunk, "tool_calls", None)
         ):
             yield chunk.content
+    saved = codec.total_chars_saved()
+    if saved > 0:
+        yield f"\n[TOON_SAVED:{saved}]"
 
