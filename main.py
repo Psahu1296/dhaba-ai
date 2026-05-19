@@ -14,7 +14,7 @@ from apscheduler.triggers.cron import CronTrigger
 from typing import Optional
 import uuid
 
-from config import API_KEY, ALLOWED_ORIGINS
+from config import API_KEY
 from tools.bill_app import login, get_top_dishes, get_dashboard_kpis
 from tools.daily_embedder import embed_day
 from tools.embedder import embed_menu
