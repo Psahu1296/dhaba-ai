@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
 import type { Message, Mode } from '../types'
 
-const API_BASE = 'http://localhost:8001'
-const API_KEY = 'dhaba-secret-key-2024'
+const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8001'
+const API_KEY = import.meta.env.VITE_API_KEY ?? 'dhaba-secret-key-2024'
 
 function uid() {
   return Math.random().toString(36).slice(2)

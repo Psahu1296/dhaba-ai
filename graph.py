@@ -2,7 +2,7 @@ from langgraph.graph import StateGraph, MessagesState, START, END
 from langgraph.prebuilt import ToolNode
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
-from config import OPENAI_BASE_URL, LLM_MODEL
+from config import OPENAI_API_KEY, OPENAI_BASE_URL, LLM_MODEL
 from tools.lc_tools import ALL_TOOLS
 
 SYSTEM_PROMPT = SystemMessage(content=(
@@ -17,18 +17,15 @@ SYSTEM_PROMPT = SystemMessage(content=(
     "- Chai/cigarette/gutka usage → get_consumables_summary\n"
     "- Business reports → call multiple tools for complete data\n"
     "- Historical daily patterns, best/worst days → search_daily_history"
-
 ))
-
-
-
 
 _llm = ChatOpenAI(
     base_url=OPENAI_BASE_URL,
-    api_key="ollama",
+    api_key=OPENAI_API_KEY,
     model=LLM_MODEL,
     temperature=0,
 )
+
 
 _llm_with_tools = _llm.bind_tools(ALL_TOOLS)
 

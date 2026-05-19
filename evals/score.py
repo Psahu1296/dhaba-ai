@@ -5,9 +5,9 @@ from openai import OpenAI
 
 # Add project root to sys.path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from config import OPENAI_BASE_URL
+from config import OPENAI_BASE_URL, OPENAI_API_KEY, LLM_MODEL
 
-_client = OpenAI(base_url=OPENAI_BASE_URL, api_key="ollama")
+_client = OpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
 
 JUDGE_PROMPT = """You are evaluating an AI assistant for a dhaba (Indian restaurant).
 
@@ -33,7 +33,7 @@ def judge(question: str, expected_topics: list, answer: str) -> tuple[int, str]:
         answer=answer,
     )
     response = _client.chat.completions.create(
-        model="hermes-fast",
+        model=LLM_MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
     )
