@@ -88,10 +88,11 @@ async def get_peak_hours_today(date: str = None) -> str:
 
 @tool
 async def get_earnings_history(period: str = "day", num_periods: int = 7) -> str:
-    """Get historical earnings trend as a time series — best/worst periods pre-identified.
+    """Get earnings time series with best/worst period pre-identified.
     period: 'day', 'week', 'month', 'year'. num_periods: how many periods back (default 7).
-    Use ONLY for: trends over time, best/worst week ever, comparing multiple past months.
-    Do NOT use for current period totals — use get_dashboard_kpis for that."""
+    Use for: which day had highest revenue, best/worst week, revenue trends, comparing past periods.
+    For "highest revenue day this month" → use period='day', num_periods=31.
+    Do NOT use for current totals (today/week/month/year) — use get_dashboard_kpis for that."""
     result = await _earnings_history(period, num_periods)
     return codec.encode_tool_result("get_earnings_history", result)
 

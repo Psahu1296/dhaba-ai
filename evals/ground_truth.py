@@ -44,6 +44,23 @@ def _str_in(expected: str, answer: str) -> bool:
     return expected.lower() in answer.lower()
 
 
+REFUSAL_PHRASES = [
+    "i don't have",
+    "i do not have",
+    "don't have access",
+    "you might want to check",
+    "check your records",
+    "i cannot access",
+    "i can't access",
+    "not available",
+    "you would need to",
+]
+
+def _is_refusal(answer: str) -> bool:
+    lower = answer.lower()
+    return any(phrase in lower for phrase in REFUSAL_PHRASES)
+
+
 # ── Ground truth fetch ──────────────────────────────────────────────────────
 
 async def fetch_ground_truth() -> dict:
@@ -115,6 +132,18 @@ CHECKS = [
         "key": "today_expenses",
         "type": "number",
     },
+    {
+        "id": 7,
+        "question": "Which day had the highest revenue this month?",
+        "key": None,
+        "type": "no_refusal",
+    },
+    {
+        "id": 8,
+        "question": "Who owes the most money to the dhaba?",
+        "key": None,
+        "type": "no_refusal",
+    },
 ]
 
 
@@ -142,9 +171,12 @@ async def run():
 
     for check in CHECKS:
         answer = await run_graph(check["question"], str(uuid.uuid4()))
-        expected = gt[check["key"]]
+        expected = gt[check["key"]] if check["key"] else None
 
-        if check["type"] == "number":
+        if check["type"] == "no_refusal":
+            ok = not _is_refusal(answer)
+            exp_str = "answered (not refused)"
+        elif check["type"] == "number":
             ok = _num_in(float(expected), answer)
             exp_str = f"₹{int(expected):,}"
         else:

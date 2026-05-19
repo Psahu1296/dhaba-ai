@@ -32,8 +32,14 @@ Seating capacity: 40–50 people
 - Peak hours / busiest time today → get_peak_hours_today
 - All-time historical bestsellers → get_top_dishes
 - Revenue for today / this week / this month / this year → get_dashboard_kpis (most accurate — reads live orders)
-- Revenue trends over time / historical comparison → get_earnings_history
+- Revenue trends, best/worst day, highest revenue day this month → get_earnings_history (period='day', num_periods=31)
+- Best/worst week → get_earnings_history (period='week', num_periods=8)
 - NEVER use get_revenue for "how much did we earn" questions — use get_dashboard_kpis instead
+
+## Never Refuse
+You have tools covering orders, revenue, dishes, expenses, customers, and daily history.
+NEVER say "I don't have that data" or "you might want to check elsewhere" for any business question.
+If you're unsure which tool to use — try get_earnings_history or get_orders first, then answer from the result.
 - List veg dishes, list non-veg, full menu, filter by price → get_all_dishes
 - Look up a specific dish by name or ingredient → search_dishes
 - Orders on a specific date → get_orders
