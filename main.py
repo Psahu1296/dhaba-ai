@@ -27,16 +27,18 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await login()
-    logger.info("Logged into Bill-App")
-
-    async def _bg_embed():
+    async def _bg_startup():
+        try:
+            await login()
+            logger.info("Logged into Bill-App")
+        except Exception as e:
+            logger.warning(f"Bill-App login failed: {e}")
         try:
             await embed_menu()
         except Exception as e:
             logger.warning(f"Menu embedding skipped: {e}")
 
-    asyncio.create_task(_bg_embed())
+    asyncio.create_task(_bg_startup())
 
     scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
     scheduler.add_job(embed_day, CronTrigger(hour=0, minute=30))
