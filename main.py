@@ -1,14 +1,11 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, Security, Request
+from fastapi import FastAPI, Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from typing import Optional
@@ -26,8 +23,6 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
@@ -54,8 +49,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Dhaba AI", lifespan=lifespan)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -122,8 +115,7 @@ async def agent_chat(req: ChatRequest):
 
 
 @app.post("/agent/chat/stream", dependencies=[Depends(require_api_key)])
-@limiter.limit("30/minute")
-async def agent_chat_stream(request: Request, req: ChatRequest):
+async def agent_chat_stream(req: ChatRequest):
     thread_id = req.session_id or str(uuid.uuid4())
     async def generate():
         async for token in run_graph_stream(req.message, thread_id):
