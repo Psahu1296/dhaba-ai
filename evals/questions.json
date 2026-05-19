@@ -1,0 +1,102 @@
+[
+  {
+    "id": 1,
+    "question": "What vegetarian dishes do you have under 50 rupees?",
+    "expected_topics": ["veg", "price", "rupees"]
+  },
+  {
+    "id": 2,
+    "question": "What are the top 3 best selling dishes?",
+    "expected_topics": ["Fish Masala", "Chicken Masala", "orders"]
+  },
+  {
+    "id": 3,
+    "question": "How is business doing today?",
+    "expected_topics": ["earnings", "revenue", "today"]
+  },
+  {
+    "id": 4,
+    "question": "Do you have any biryani?",
+    "expected_topics": ["biryani", "rice"]
+  },
+  {
+    "id": 5,
+    "question": "What is the price of Fish Masala?",
+    "expected_topics": ["Fish Masala", "price", "half", "full"]
+  },
+  {
+    "id": 6,
+    "question": "What non-veg options are available?",
+    "expected_topics": ["chicken", "fish", "egg", "non-veg"]
+  },
+  {
+    "id": 7,
+    "question": "What is our revenue this month?",
+    "expected_topics": ["revenue", "month", "earnings"]
+  },
+  {
+    "id": 8,
+    "question": "Show me the dashboard KPIs",
+    "expected_topics": ["today", "earnings", "percentage"]
+  },
+  {
+    "id": 9,
+    "question": "What roti options do you have?",
+    "expected_topics": ["roti", "paratha", "bread"]
+  },
+  {
+    "id": 10,
+    "question": "What drinks or beverages do you serve?",
+    "expected_topics": ["chai", "drink", "beverage"]
+  },
+  {
+    "id": 11,
+    "question": "What is the yearly revenue?",
+    "expected_topics": ["yearly", "revenue", "earnings"]
+  },
+  {
+    "id": 12,
+    "question": "Show me recent expenses",
+    "expected_topics": ["expenses", "amount", "type"]
+  },
+  {
+    "id": 13,
+    "question": "What egg dishes do you have?",
+    "expected_topics": ["egg", "dish"]
+  },
+  {
+    "id": 14,
+    "question": "Which dishes are the most popular?",
+    "expected_topics": ["orders", "popular", "frequent"]
+  },
+  {
+    "id": 15,
+    "question": "What is the cheapest dish on the menu?",
+    "expected_topics": ["price", "cheap", "rupees"]
+  },
+  {
+    "id": 16,
+    "question": "Do you have any rice dishes?",
+    "expected_topics": ["rice", "jeera", "plain"]
+  },
+  {
+    "id": 17,
+    "question": "What dal dishes do you serve?",
+    "expected_topics": ["dal", "lentil"]
+  },
+  {
+    "id": 18,
+    "question": "How much did we earn this week?",
+    "expected_topics": ["week", "revenue", "earnings"]
+  },
+  {
+    "id": 19,
+    "question": "What snacks do you have?",
+    "expected_topics": ["snack", "samosa", "light"]
+  },
+  {
+    "id": 20,
+    "question": "What is the most expensive dish?",
+    "expected_topics": ["price", "expensive", "full"]
+  }
+]

@@ -1,0 +1,23 @@
+# Environment
+.env
+.dev_cookie.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# ChromaDB (local vector store — rebuilt via embedder)
+chroma_db/
+
+# Claude
+CLAUDE.md
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store

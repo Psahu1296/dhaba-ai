@@ -1,0 +1,221 @@
+[
+  {
+    "id": 1,
+    "question": "What vegetarian dishes do you have under 50 rupees?",
+    "expected_topics": [
+      "veg",
+      "price",
+      "rupees"
+    ],
+    "answer": "Here are the vegetarian dishes available at our Dhaba that are under ₹50 per person:\n\n| Dish | Price |\n|------|-------|\n| Plain Rice (Half) | ₹30 |\n| Chawal Dal (Half) | ₹40 |\n| Paratha (Single) | ₹40 |\n| Jeera Rice (Half) | ₹40 |\n| Masala Rice (Half) | ₹50 |\n| Veg Biryani (Full) | ₹180 |\n\n**Vegetarian options under ₹50:**\n- **Jeera Rice** - Half portion ₹40 | Full ₹80\n- **Masala Rice** - Half portion ₹50 | Full ₹100\n- **Plain Rice** - Half portion ₹30 | Full ₹60\n- **Chawal Dal** - Half portion ₹40 | Full ₹80\n- **Paratha** - Single portion ₹40\n\nNote: Veg Biryani is ₹50 for half portion, so it fits in your budget for smaller portions. Let me know if you'd like more details on any of these dishes! 🍚",
+    "status": "ok"
+  },
+  {
+    "id": 2,
+    "question": "What are the top 3 best selling dishes?",
+    "expected_topics": [
+      "Fish Masala",
+      "Chicken Masala",
+      "orders"
+    ],
+    "answer": "Based on the sales data from dhaba orders, here are the **Top 3 Best Selling Dishes**:\n\n| Rank | Dish Name | Total Orders |\n|------|-----------|--------------|\n| 1 | **Fish Masala** | 99 orders |\n| 2 | **Chicken Masala** | 84 orders |\n| 3 | **Jeera Rice** | 41 orders |\n\n### Details\n\n**1. Fish Masala** 🐟\n- Category: Sabji (Non-Veg)\n- Price: ₹100 (Half), ₹200 (Full) | Online: ₹110 (Half), ₹210 (Full)\n- Currently available ✅\n\n**2. Chicken Masala** 🍗\n- Category: Sabji (Non-Veg)\n- Price: ₹100 (Half), ₹200 (Full) | Online: ₹120 (Half), ₹240 (Full)\n- Currently available ✅\n\n**3. Jeera Rice** 🍚\n- Category: Rice (Veg)\n- Price: ₹40 (Half), ₹80 (Full) | Online: ₹50 (Half), ₹90 (Full)\n- Currently available ✅\n\nThese dishes represent the most frequently ordered items at the dhaba! Would you like more details about any of these dishes or information about other menu items?",
+    "status": "ok"
+  },
+  {
+    "id": 3,
+    "question": "How is business doing today?",
+    "expected_topics": [
+      "earnings",
+      "revenue",
+      "today"
+    ],
+    "answer": "Based on today's business KPIs, here's how things are shaping up:\n\n**Today's Performance:**\n- **Total Revenue:** ₹0\n- **Daily Change:** -100% (complete drop from yesterday)\n\n**Performance Overview:**\n- **Weekly Total:** ₹17,701 (17.23% down from last week)\n- **Monthly Total:** ₹46,602 (19.08% down from last month)\n- **Yearly Total:** ₹109,321 (100% up from this time last year)\n\n**Summary:**\nBusiness is currently experiencing a slow period today with zero revenue so far. This is a significant drop from both yesterday and the weekly/monthly averages. However, on a year-over-year basis, the business is still performing well overall.\n\nIf you'd like more details, I can check:\n- **Total Orders:** Count of today's orders\n- **Customer Count:** Number of unique customers today\n- **Order Revenue:** Breakdown by dish or category\n\nWould you like me to dive deeper into any of these areas?",
+    "status": "ok"
+  },
+  {
+    "id": 4,
+    "question": "Do you have any biryani?",
+    "expected_topics": [
+      "biryani",
+      "rice"
+    ],
+    "answer": "Based on my search of our menu, I don't see any biryani dishes currently available. The menu I found includes items like:\n\n**Vegetarian Sabjis:**\n- Jeera Rice (₹40/Half, ₹80/Full)\n- Matar Paneer (₹100/Half, ₹200/Full)\n- Bhindi Pyaj (₹70/Half, ₹140/Full)\n- Paneer Bharta (₹100/Half, ₹200/Full)\n\n**Rice Roti Options:**\n- Roti (₹7/Regular)\n- Paratha (₹40/Single)\n- Flake Cigarette (₹10/Regular)\n\n**Chana Dal:**\n- Chawal Dal (₹40/Half, ₹80/Full)\n\n**Other Items:**\n- Egg Bhurji (2 pc) (₹50)\n- Sev Bhaji (masala) (₹70/Half, ₹140/Full)\n\nIf you're looking for biryani or meat curries specifically, it may be on our menu under a different name, or we might not have it available right now. Would you like me to search for any specific cuisine or dish type?",
+    "status": "ok"
+  },
+  {
+    "id": 5,
+    "question": "What is the price of Fish Masala?",
+    "expected_topics": [
+      "Fish Masala",
+      "price",
+      "half",
+      "full"
+    ],
+    "answer": "I apologize, but the search results I retrieved from our restaurant's dish menu don't appear to contain the information about Dish Masala or Fish Masala items. The results returned seem to show unrelated items. \n\nLet me verify this with the dish menu search to get you the correct pricing information for Fish Masala.\n\nYou may need to visit the dhaba's physical menu or ask your server for the current Fish Masala price, as pricing can vary based on:\n\n1. Seasonal specials\n2. Current availability\n3. Order size (Single vs. Regular/Large)\n\nWould you like me to search for a broader range of menu items to help you find the specific dish you're looking for?",
+    "status": "ok"
+  },
+  {
+    "id": 6,
+    "question": "What non-veg options are available?",
+    "expected_topics": [
+      "chicken",
+      "fish",
+      "egg",
+      "non-veg"
+    ],
+    "answer": "Based on my search, here are the non-vegetarian options available at the dhaba:\n\n| Dishes | Category | Portion | Price |\n|--------|----------|---------|-------|\n| **Egg Rice** | Rice (non-veg) | Half: ₹80 / Full: ₹160 | |\n| **Chicken Masala** | Sabji (non-veg) | Half: ₹100 / Full: ₹200 | |\n| **Fish Masala** | Sabji (non-veg) | Half: ₹100 / Full: ₹200 | |\n| **Fish Roast** | Sabji (non-veg) | Single: ₹50 / Half: ₹100 / Full: ₹200 | |\n\nWould you like more information about any of these dishes, such as ingredients or nutritional details?",
+    "status": "ok"
+  },
+  {
+    "id": 7,
+    "question": "What is our revenue this month?",
+    "expected_topics": [
+      "revenue",
+      "month",
+      "earnings"
+    ],
+    "answer": "Based on the revenue data, **your revenue for this month (May 2026) is 3,697 units of currency**.\n\nHere's the revenue breakdown for recent periods:\n- January 2026: 0\n- February 2026: 0\n- March 2026: 0\n- April 2026: 1,745\n- **May 2026: 3,697**\n\nThe revenue has more than doubled from April to May, which is great progress!",
+    "status": "ok"
+  },
+  {
+    "id": 8,
+    "question": "Show me the dashboard KPIs",
+    "expected_topics": [
+      "today",
+      "earnings",
+      "percentage"
+    ],
+    "answer": "# 📊 Dhaba Dashboard KPIs\n\n## Daily Performance\n- **Total Revenue:** ₹0.00\n- **Change:** -100% (No daily activity today)\n\n## Weekly Performance\n- **Total Revenue:** ₹17,701\n- **Weekly Change:** -17.23% (↓ 3,304.26 from last week)\n\n> Weekly revenue has **decreased** compared to the previous week\n> \n> Monthly revenue has **decreased** by 19.08% compared to last month\n> \n> Yearly revenue is **up** 100% compared to last year\n\nLet me know if you need additional details! 😊",
+    "status": "ok"
+  },
+  {
+    "id": 9,
+    "question": "What roti options do you have?",
+    "expected_topics": [
+      "roti",
+      "paratha",
+      "bread"
+    ],
+    "answer": "Based on our menu search, here are our roti options:\n\n**Roti (Veg) - ₹7 per roti**\nA crispy and freshly-made whole wheat bread.\n\n**Paratha (Veg) - ₹40 per paratha**\nA hearty flatbread with a generous filling of veg sabji.\n\nIf you'd like to see more details or other menu items, feel free to ask!",
+    "status": "ok"
+  },
+  {
+    "id": 10,
+    "question": "What drinks or beverages do you serve?",
+    "expected_topics": [
+      "chai",
+      "drink",
+      "beverage"
+    ],
+    "answer": "We offer several beverages at our dhaba. Here are the main drinks available:\n\n## 🍵 Tea & Coffee\n- **Chai (Half)**: ₹10 | **Chai (Full)**: ₹20\n\n## 🥤 Refreshments\n- **Cold Drink**: ₹25\n\n## 💧 Water\n- **Water Bottle**: ₹20\n\nWould you like to know about any other menu items or orders we can help with?",
+    "status": "ok"
+  },
+  {
+    "id": 11,
+    "question": "What is the yearly revenue?",
+    "expected_topics": [
+      "yearly",
+      "revenue",
+      "earnings"
+    ],
+    "answer": "Based on the financial data I retrieved, the yearly revenue shows as zero for all years tracked in the system (2022-2026). This suggests that either the dhaba financial records haven't been populated yet, or the revenue data wasn't entered into the system. \n\nIf you need to see revenue data for a different time period, please let me know and I'd be happy to check for you, particularly since you might also be interested in revenue for specific months or weekly periods!",
+    "status": "ok"
+  },
+  {
+    "id": 12,
+    "question": "Show me recent expenses",
+    "expected_topics": [
+      "expenses",
+      "amount",
+      "type"
+    ],
+    "answer": "১। **আমের অর্ধেকের বেশি উপাদান: ৩৬০০**\n\n২। **সর্বোচ্চ রাশিমাত্রায় উপাদান:**\n- নাম: food raw material\n- রাশি: ৩৬০০\n- তারিখ: ২০২৬-০৫-০২\n\n৩। **নাম অনুযায়ী সর্বোচ্চ রাশিমাত্রায় উপাদান:**\n- নাম: food raw meterial\n- রাশি: ৩০০০\n\n৪। **নাম অনুযায়ী সর্বোচ্চ রাশিমাত্রায় উপাদান:**\n- নাম: food raw material\n- রাশি: ৩৩৮০",
+    "status": "ok"
+  },
+  {
+    "id": 13,
+    "question": "What egg dishes do you have?",
+    "expected_topics": [
+      "egg",
+      "dish"
+    ],
+    "answer": "Based on our menu search, we have the following egg-based dishes:\n\n## **Egg Dishes** 🍳\n- **Boling egg** [1 piece] | Veg | ₹15\n\n## **Additional Menu Items (Not Egg-Based)**\nNote: The other dishes in the search results like Masala rice, Veg Biryani, Chai, Plain Rice, and Jeera Rice do not contain eggs - they were found in the same search category.\n\nIf you're looking for more egg options, you might want to ask about specific dishes like **Egg Biryani**, **Egg Fried Rice**, or **Veg Sabji** variations. Would you like me to search for more specific dish options or your favorite egg dish name?",
+    "status": "ok"
+  },
+  {
+    "id": 14,
+    "question": "Which dishes are the most popular?",
+    "expected_topics": [
+      "orders",
+      "popular",
+      "frequent"
+    ],
+    "answer": "Based on the order data, here are the most popular dishes at the dhaba:\n\n| Rank | Dish Name | Category | Orders |\n|------|-----------|----------|--------|\n| 🥇 | **Fish Masala** | Sabji (Non-veg) | 99 |\n| 🥈 | **Chicken Masala** | Sabji (Non-veg) | 84 |\n| 🥉 | **Jeera Rice** | Rice (Veg) | 41 |\n| 4️⃣ | **Chawal Dal** | Sabji (Veg) | 39 |\n| 5️⃣ | **Egg Bhurji Curry** | Sabji (Non-veg) | 36 |\n\nKey observations:\n- **Fish Masala** is the clear favorite with the highest order count at 99\n- The top dishes are mostly **masala-based preparations** (Fish Masala & Chicken Masala)\n- **Chicken Masala** ranks second with 84 orders\n- There's strong demand for both vegetarian (Jeera Rice, Chawal Dal) and non-vegetarian options\n\nThese dishes represent the best sellers and would make great recommendations for your menu or marketing materials!",
+    "status": "ok"
+  },
+  {
+    "id": 15,
+    "question": "What is the cheapest dish on the menu?",
+    "expected_topics": [
+      "price",
+      "cheap",
+      "rupees"
+    ],
+    "answer": "Based on the menu search results, the cheapest dish on the menu is **Plain Rice** - available for **₹30** for a half portion (₹60 for full portion).\n\nThe price ranking from cheapest to more expensive starts with:\n1. Plain Rice | ₹30 (half)\n2. Jeera Rice | ₹40 (half)\n3. Masala Rice | ₹50 (half)\n4. Egg Rice | ₹80 (half)\n5. Veg Biryani | ₹100 (half)",
+    "status": "ok"
+  },
+  {
+    "id": 16,
+    "question": "Do you have any rice dishes?",
+    "expected_topics": [
+      "rice",
+      "jeera",
+      "plain"
+    ],
+    "answer": "Yes, we serve 4 rice dishes on the menu:\n\n| Dish | Type | Half | Full |\n|---|---|---|---|\n| Masala Rice | Veg | ₹50 | ₹100 |\n| Egg Rice | Non-Veg | ₹80 | ₹160 |\n| Plain Rice | Veg | ₹30 | ₹60 |\n| Jeera Rice | Veg | ₹40 | ₹80 |\n\nLet me know if you'd like more details about any dish or assistance with placing an order! 😊",
+    "status": "ok"
+  },
+  {
+    "id": 17,
+    "question": "What dal dishes do you serve?",
+    "expected_topics": [
+      "dal",
+      "lentil"
+    ],
+    "answer": "",
+    "status": "ok"
+  },
+  {
+    "id": 18,
+    "question": "How much did we earn this week?",
+    "expected_topics": [
+      "week",
+      "revenue",
+      "earnings"
+    ],
+    "answer": "**Weekly Earnings Summary:**\n\nHere's how you're performing this week:\n\n| Period (Week) | Earnings (₹) |\n|--------------|--------------|\n| Week 17 (2026-17) | 2,576 |\n| Week 18 (2026-18) | 2,053 |\n| Week 19 (2026-19) | 2,770 |\n| Week 20 (2026-20) | 3,372 |\n\n**💰 Total Weekly Earnings: ₹10,771**\n\nGreat news - you ended with a particularly strong week! The current period (Week 19-20) shows your best earnings so far. Want to analyze specific dishes, orders, or dive into your customer data for more insights?",
+    "status": "ok"
+  },
+  {
+    "id": 19,
+    "question": "What snacks do you have?",
+    "expected_topics": [
+      "snack",
+      "samosa",
+      "light"
+    ],
+    "answer": "Here are the **snacks** available at the dhaba:\n\n| Snack | Category | Price (Regular) |\n|-------|----------|-----------------|\n| Masala Papad | Veg | ₹30 |\n| Papad Dry | Veg | ₹10 |\n| Papad Fry | Veg | ₹20 |\n| Chana Roast | Veg | ₹100 (Half), ₹200 (Full) |\n\nWould you like to order any of these?",
+    "status": "ok"
+  },
+  {
+    "id": 20,
+    "question": "What is the most expensive dish?",
+    "expected_topics": [
+      "price",
+      "expensive",
+      "full"
+    ],
+    "answer": "",
+    "status": "ok"
+  }
+]
