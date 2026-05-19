@@ -1,4 +1,5 @@
 import httpx
+import logging
 from config import BILL_APP_URL, BILL_APP_EMAIL, BILL_APP_PASSWORD
 
 from datetime import date as _date
@@ -6,9 +7,9 @@ import json as _json
 import asyncio
 import os
 
-# One shared client for the whole app — holds cookies after login
-# JS equivalent: const apiClient = axios.create({ baseURL, withCredentials: true })
-_client = httpx.AsyncClient(base_url=BILL_APP_URL)
+logger = logging.getLogger(__name__)
+
+_client = httpx.AsyncClient(base_url=BILL_APP_URL, timeout=30.0)
 
 
 
@@ -21,7 +22,7 @@ async def login() -> None:
             with open(COOKIE_FILE) as f:
                 for name, value in _json.load(f).items():
                     _client.cookies.set(name, value)
-            print("✓ Loaded saved session")
+            logger.info("Loaded saved Bill-App session from cookie file")
             return
         except Exception:
             pass
@@ -35,12 +36,12 @@ async def login() -> None:
             response.raise_for_status()
             with open(COOKIE_FILE, "w") as f:
                 _json.dump(dict(_client.cookies), f)
-            print("✓ Logged in and saved session")
+            logger.info("Logged into Bill-App and saved session")
             return
         except Exception as e:
             if "429" in str(e) and attempt < 2:
                 wait = 30 * (attempt + 1)
-                print(f"Login rate limited. Retrying in {wait}s...")
+                logger.warning(f"Login rate limited. Retrying in {wait}s...")
                 await asyncio.sleep(wait)
             else:
                 raise

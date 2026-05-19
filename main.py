@@ -1,30 +1,49 @@
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi import FastAPI, Depends, HTTPException, Security, Request
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from tools.bill_app import login, get_top_dishes, get_dashboard_kpis
 from fastapi.responses import StreamingResponse
-from agent import run_agent, run_agent_stream
-from config import API_KEY
-from graph import run_graph, run_graph_stream
-import uuid
-from typing import Optional
+from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from tools.daily_embedder import embed_day
+from typing import Optional
+import uuid
 
+from config import API_KEY, ALLOWED_ORIGINS
+from tools.bill_app import login, get_top_dishes, get_dashboard_kpis
+from tools.daily_embedder import embed_day
+from tools.embedder import embed_menu
+from agent import run_agent, run_agent_stream
+from graph import run_graph, run_graph_stream
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await login()
-    print("✓ Logged into Bill-App")
+    logger.info("Logged into Bill-App")
+
+    try:
+        await embed_menu()
+        logger.info("Menu embedded into ChromaDB")
+    except Exception as e:
+        logger.warning(f"Menu embedding skipped: {e}")
 
     scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
     scheduler.add_job(embed_day, CronTrigger(hour=0, minute=30))
     scheduler.start()
-    print("✓ Daily embedder scheduled at 00:30 IST")
+    logger.info("Daily embedder scheduled at 00:30 IST")
 
     yield
 
@@ -32,17 +51,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Dhaba AI", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5174"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["Content-Type", "X-API-Key"],
 )
 
-
-# Define the header name the client must send
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
@@ -51,19 +70,21 @@ async def require_api_key(key: str = Security(api_key_header)):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
     return key
 
-# Pydantic model = shape of the request body
-# JS equivalent: type ChatRequest = { message: string }
+
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+
 
 @app.get("/")
 async def root():
     return {"status": "Dhaba AI running"}
 
-@app.post("/admin/embed-day")
+
+@app.post("/admin/embed-day", dependencies=[Depends(require_api_key)])
 async def trigger_embed(date: str = None):
     await embed_day(date)
+    logger.info(f"Manual embed triggered for date: {date or 'yesterday'}")
     return {"status": "embedded", "date": date or "yesterday"}
 
 
@@ -90,14 +111,17 @@ async def chat_stream_endpoint(req: ChatRequest):
             yield token
     return StreamingResponse(generate(), media_type="text/plain")
 
+
 @app.post("/agent/chat", dependencies=[Depends(require_api_key)])
 async def agent_chat(req: ChatRequest):
     thread_id = req.session_id or str(uuid.uuid4())
     answer = await run_graph(req.message, thread_id)
     return {"answer": answer, "session_id": thread_id}
 
+
 @app.post("/agent/chat/stream", dependencies=[Depends(require_api_key)])
-async def agent_chat_stream(req: ChatRequest):
+@limiter.limit("30/minute")
+async def agent_chat_stream(request: Request, req: ChatRequest):
     thread_id = req.session_id or str(uuid.uuid4())
     async def generate():
         async for token in run_graph_stream(req.message, thread_id):
