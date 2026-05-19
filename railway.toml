@@ -2,4 +2,5 @@
 builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
-
+[[mounts]]
+mountPath = "/app/chroma_db"
