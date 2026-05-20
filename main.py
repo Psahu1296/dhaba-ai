@@ -11,13 +11,15 @@ from apscheduler.triggers.cron import CronTrigger
 from typing import Optional
 import uuid
 
-from config import API_KEY
+from config import API_KEY, DATABASE_URL
 from tools.bill_app import login, get_top_dishes, get_dashboard_kpis
 from tools.daily_embedder import embed_day
 from tools.embedder import embed_menu
 from tools import codec
 from agent import run_agent, run_agent_stream
-from graph import run_graph, run_graph_stream
+from graph import run_graph, run_graph_stream, init_graph
+from db import init_db
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await init_db(DATABASE_URL)
+    await init_graph(DATABASE_URL)
     async def _bg_startup():
         try:
             await login()

@@ -13,3 +13,7 @@ langgraph==1.2.0
 langgraph-checkpoint==4.1.0
 langgraph-prebuilt==1.1.0
 langsmith==0.8.5
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.30
+psycopg[binary]>=3.1
+langgraph-checkpoint-postgres>=2.0

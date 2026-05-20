@@ -5,6 +5,8 @@ from langchain_core.messages import SystemMessage
 from config import OPENAI_API_KEY, OPENAI_BASE_URL, LLM_MODEL
 from tools.lc_tools import ALL_TOOLS
 from tools import codec
+import psycopg
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 SYSTEM_PROMPT = SystemMessage(content="""Tool results use TOON format — a compact notation designed for LLMs. Read tabular rows as structured records with the headers defined at the top.
 
@@ -95,10 +97,15 @@ workflow.add_edge(START, "agent")
 workflow.add_conditional_edges("agent", should_continue)
 workflow.add_edge("tools", "agent")
 
-from langgraph.checkpoint.memory import MemorySaver
+graph = None
 
-_checkpointer = MemorySaver()
-graph = workflow.compile(checkpointer=_checkpointer)
+async def init_graph(database_url: str):
+    global graph
+    conn = await psycopg.AsyncConnection.connect(database_url, autocommit=True)
+    checkpointer = AsyncPostgresSaver(conn)
+    await checkpointer.setup()
+    graph = workflow.compile(checkpointer=checkpointer)
+
 
 
 async def run_graph(message: str, thread_id: str) -> str:
