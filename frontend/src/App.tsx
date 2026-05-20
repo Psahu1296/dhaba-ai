@@ -2,11 +2,11 @@ import { useEffect, useRef } from 'react'
 import { useChat } from './hooks/useChat'
 import { MessageBubble } from './components/MessageBubble'
 import { InputBar } from './components/InputBar'
-import { BotMessageSquare, BarChart3, UtensilsCrossed, Banknote, PackageOpen, Sparkles, BrainCircuit, Zap, Leaf } from 'lucide-react'
+import { BotMessageSquare, BarChart3, UtensilsCrossed, Banknote, PackageOpen, Sparkles, BrainCircuit, Zap, Leaf, ScrollText } from 'lucide-react'
 import type { Mode } from './types'
 
 export default function App() {
-  const { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, clearChat, stopGeneration } = useChat()
+  const { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, clearChat, stopGeneration, loadDailyReport } = useChat()
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -58,6 +58,15 @@ export default function App() {
                 )
               })}
             </div>
+
+            <button
+              onClick={loadDailyReport}
+              disabled={isLoading}
+              className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-zinc-500 hover:text-amber-400 transition-colors px-4 py-2 rounded-xl hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 disabled:opacity-40"
+            >
+              <ScrollText size={13} />
+              Report
+            </button>
 
             <button
               onClick={clearChat}

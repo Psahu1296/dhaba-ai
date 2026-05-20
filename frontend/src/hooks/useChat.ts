@@ -138,6 +138,25 @@ export function useChat() {
     abortRef.current?.abort()
   }
 
+  async function loadDailyReport() {
+    setIsLoading(true)
+    const assistantId = uid()
+    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', isStreaming: true }])
+    try {
+      const res = await fetch(`${API_BASE}/report/latest`, {
+        headers: { 'X-API-Key': API_KEY },
+      })
+      const data = await res.json()
+      const content = data.report_date
+        ? `**Daily Business Report — ${data.report_date}**\n\n${data.content}`
+        : 'No daily report generated yet. Come back after 11 PM IST.'
+      setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content, isStreaming: false } : m))
+    } catch {
+      setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: 'Could not load report.', isStreaming: false } : m))
+    }
+    setIsLoading(false)
+  }
+
   function clearChat() {
     const fresh = crypto.randomUUID()
     localStorage.setItem(SESSION_KEY, fresh)
@@ -147,5 +166,5 @@ export function useChat() {
     abortRef.current?.abort()
   }
 
-  return { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, clearChat, stopGeneration }
+  return { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, clearChat, stopGeneration, loadDailyReport }
 }
