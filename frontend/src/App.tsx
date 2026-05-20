@@ -84,7 +84,7 @@ export default function App() {
             </>
           )}
           <div className="ml-auto flex items-center gap-2 shrink-0">
-            {mode === 'agent' && sessionId && (
+            {mode === 'agent' && (
               <span className="font-mono text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md border border-white/5">
                 SESSION: {sessionId.slice(0, 8)}
               </span>

@@ -10,11 +10,21 @@ function uid() {
   return Math.random().toString(36).slice(2)
 }
 
+const SESSION_KEY = 'dhaba_session_id'
+
+function getOrCreateSessionId(): string {
+  const saved = localStorage.getItem(SESSION_KEY)
+  if (saved) return saved
+  const fresh = crypto.randomUUID()
+  localStorage.setItem(SESSION_KEY, fresh)
+  return fresh
+}
+
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [mode, setMode] = useState<Mode>('agent')
   const [isLoading, setIsLoading] = useState(false)
-  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionId, setSessionId] = useState<string>(getOrCreateSessionId)
   const [totalCharsSaved, setTotalCharsSaved] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -82,8 +92,7 @@ export function useChat() {
     const assistantId = uid()
     setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', isStreaming: true }])
 
-    const currentSessionId = sessionId || crypto.randomUUID()
-    if (!sessionId) setSessionId(currentSessionId)
+    const currentSessionId = sessionId
 
     abortRef.current = new AbortController()
 
@@ -130,8 +139,10 @@ export function useChat() {
   }
 
   function clearChat() {
+    const fresh = crypto.randomUUID()
+    localStorage.setItem(SESSION_KEY, fresh)
     setMessages([])
-    setSessionId(null)
+    setSessionId(fresh)
     setTotalCharsSaved(0)
     abortRef.current?.abort()
   }
