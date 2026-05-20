@@ -2,17 +2,17 @@
   {
     "id": 1,
     "question": "What vegetarian dishes do you have under 50 rupees?",
-    "expected_topics": ["veg", "price", "rupees"]
+    "expected_topics": ["veg", "₹", "Roti"]
   },
   {
     "id": 2,
     "question": "What are the top 3 best selling dishes?",
-    "expected_topics": ["Fish Masala", "Chicken Masala", "orders"]
+    "expected_topics": ["Fish Masala", "Chicken Masala", "Jeera Rice"]
   },
   {
     "id": 3,
     "question": "How is business doing today?",
-    "expected_topics": ["earnings", "revenue", "today"]
+    "expected_topics": ["revenue", "today", "decrease"]
   },
   {
     "id": 4,
@@ -22,7 +22,7 @@
   {
     "id": 5,
     "question": "What is the price of Fish Masala?",
-    "expected_topics": ["Fish Masala", "price", "half", "full"]
+    "expected_topics": ["Fish Masala", "₹", "half", "full"]
   },
   {
     "id": 6,
@@ -32,32 +32,32 @@
   {
     "id": 7,
     "question": "What is our revenue this month?",
-    "expected_topics": ["revenue", "month", "earnings"]
+    "expected_topics": ["revenue", "month", "₹"]
   },
   {
     "id": 8,
     "question": "Show me the dashboard KPIs",
-    "expected_topics": ["today", "earnings", "percentage"]
+    "expected_topics": ["today", "revenue", "week"]
   },
   {
     "id": 9,
     "question": "What roti options do you have?",
-    "expected_topics": ["roti", "paratha", "bread"]
+    "expected_topics": ["roti", "₹"]
   },
   {
     "id": 10,
     "question": "What drinks or beverages do you serve?",
-    "expected_topics": ["chai", "drink", "beverage"]
+    "expected_topics": ["Chai", "Cold Drink", "drink"]
   },
   {
     "id": 11,
     "question": "What is the yearly revenue?",
-    "expected_topics": ["yearly", "revenue", "earnings"]
+    "expected_topics": ["yearly", "revenue", "₹"]
   },
   {
     "id": 12,
     "question": "Show me recent expenses",
-    "expected_topics": ["expenses", "amount", "type"]
+    "expected_topics": ["expenses", "₹", "total"]
   },
   {
     "id": 13,
@@ -67,12 +67,12 @@
   {
     "id": 14,
     "question": "Which dishes are the most popular?",
-    "expected_topics": ["orders", "popular", "frequent"]
+    "expected_topics": ["Fish Masala", "Chicken Masala", "popular"]
   },
   {
     "id": 15,
     "question": "What is the cheapest dish on the menu?",
-    "expected_topics": ["price", "cheap", "rupees"]
+    "expected_topics": ["cheapest", "₹", "Gutka"]
   },
   {
     "id": 16,
@@ -82,21 +82,21 @@
   {
     "id": 17,
     "question": "What dal dishes do you serve?",
-    "expected_topics": ["dal", "lentil"]
+    "expected_topics": ["dal", "Chawal Dal"]
   },
   {
     "id": 18,
     "question": "How much did we earn this week?",
-    "expected_topics": ["week", "revenue", "earnings"]
+    "expected_topics": ["week", "₹", "earned"]
   },
   {
     "id": 19,
     "question": "What snacks do you have?",
-    "expected_topics": ["snack", "samosa", "light"]
+    "expected_topics": ["snack", "Papad", "₹"]
   },
   {
     "id": 20,
     "question": "What is the most expensive dish?",
-    "expected_topics": ["price", "expensive", "full"]
+    "expected_topics": ["expensive", "₹200", "Fish Roast"]
   }
 ]

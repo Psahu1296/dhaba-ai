@@ -7,7 +7,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from tools.bill_app import login
-from agent import run_agent
+from graph import run_graph
 
 
 async def run_evals():
@@ -22,7 +22,8 @@ async def run_evals():
     for q in questions:
         print(f"[{q['id']}/20] {q['question']}")
         try:
-            answer = await run_agent(q["question"])
+            thread_id = f"eval-{q['id']}"
+            answer = await run_graph(q["question"], thread_id=thread_id)
             status = "ok"
         except Exception as e:
             answer = f"ERROR: {e}"
