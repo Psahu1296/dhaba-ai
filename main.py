@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from sched import scheduler
 from fastapi import FastAPI, Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,7 @@ from tools import codec
 from agent import run_agent, run_agent_stream
 from graph import run_graph, run_graph_stream, init_graph
 from db import init_db
+from reports import generate_daily_report
 
 
 logging.basicConfig(
@@ -46,9 +48,10 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_bg_startup())
 
     scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
-    scheduler.add_job(embed_day, CronTrigger(hour=0, minute=30))
+    scheduler.add_job(embed_day, CronTrigger(hour=0, minute=30, timezone="Asia/Kolkata"))
+    scheduler.add_job(generate_daily_report, CronTrigger(hour=23, minute=0, timezone="Asia/Kolkata"))
     scheduler.start()
-    logger.info("Daily embedder scheduled at 00:30 IST")
+    logger.info("Scheduler started: embedder at 00:30 IST, report at 23:00 IST")
 
     yield
 
@@ -128,3 +131,18 @@ async def agent_chat_stream(req: ChatRequest):
         async for token in run_graph_stream(req.message, thread_id):
             yield token
     return StreamingResponse(generate(), media_type="text/plain")
+
+
+@app.get("/report/latest")
+async def get_report():
+    from db import get_latest_report
+    report = await get_latest_report()
+    if not report:
+        return {"report": None, "message": "No report generated yet"}
+    return {"report_date": report.report_date, "content": report.content, "generated_at": report.generated_at}
+
+
+@app.post("/admin/report/generate", dependencies=[Depends(require_api_key)])
+async def trigger_report(date: str = None):
+    content = await generate_daily_report(date)
+    return {"status": "generated", "date": date or "today", "length": len(content)}
