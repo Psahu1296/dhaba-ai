@@ -97,13 +97,15 @@ export function useChat() {
     setMessages(prev => [...prev, userMsg])
     setIsLoading(true)
 
-    if (mode === 'stream') {
-      await sendStreaming(text)
-    } else {
-      await sendAgent(text)
+    try {
+      if (mode === 'stream') {
+        await sendStreaming(text)
+      } else {
+        await sendAgent(text)
+      }
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }, [mode, isLoading, sessionId, messages])
 
   async function sendStreaming(text: string) {
@@ -120,6 +122,16 @@ export function useChat() {
         signal: abortRef.current.signal,
       })
 
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '')
+        let detail = `Server error ${res.status}`
+        try { detail = JSON.parse(errText).detail ?? detail } catch {}
+        setMessages(prev => prev.map(m =>
+          m.id === assistantId ? { ...m, content: `Error: ${detail}`, isStreaming: false } : m
+        ))
+        return
+      }
+
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
 
@@ -134,7 +146,7 @@ export function useChat() {
     } catch (e: any) {
       if (e.name !== 'AbortError') {
         setMessages(prev => prev.map(m =>
-          m.id === assistantId ? { ...m, content: 'Error: could not reach server.' } : m
+          m.id === assistantId ? { ...m, content: 'Error: could not reach server.', isStreaming: false } : m
         ))
       }
     }
@@ -166,16 +178,35 @@ export function useChat() {
         signal: abortRef.current.signal,
       })
 
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '')
+        let detail = `Server error ${res.status}`
+        try { detail = JSON.parse(errText).detail ?? detail } catch {}
+        setMessages(prev => prev.map(m =>
+          m.id === assistantId ? { ...m, content: `Error: ${detail}`, isStreaming: false } : m
+        ))
+        return
+      }
+
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
+      let received = false
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         const token = decoder.decode(value)
+        if (token) received = true
         setMessages(prev => prev.map(m =>
           m.id === assistantId ? { ...m, content: m.content + token, lastTokenAt: Date.now() } : m
         ))
+      }
+
+      if (!received) {
+        setMessages(prev => prev.map(m =>
+          m.id === assistantId ? { ...m, content: 'No response — server may be busy, try again.', isStreaming: false } : m
+        ))
+        return
       }
     } catch (e: any) {
       if (e.name !== 'AbortError') {
