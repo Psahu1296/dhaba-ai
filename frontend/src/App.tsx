@@ -11,15 +11,15 @@ export default function App() {
   const { user, error: authError, isLoading: authLoading, login, logout } = useAuth()
   const { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, sendFeedback, clearChat, stopGeneration, loadDailyReport } = useChat()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-
-  if (!user) {
-    return <LoginPage onLogin={login} error={authError} isLoading={authLoading} />
-  }
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  if (!user) {
+    return <LoginPage onLogin={login} error={authError} isLoading={authLoading} />
+  }
 
   return (
     <div className="flex flex-col h-screen bg-[#050505] relative">
