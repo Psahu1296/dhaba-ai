@@ -71,7 +71,17 @@ async def get_top_dishes(limit: int = 5) -> dict:
 
 async def get_dashboard_kpis() -> dict:
     response = await _request("GET", "/api/earnings/dashboard")
-    return response.json()
+    raw = response.json().get("data", {})
+    # Rename fields explicitly so LLM never confuses revenue totals with order counts
+    return {
+        "today_revenue_rupees": raw.get("daily", {}).get("total", 0),
+        "today_vs_yesterday_pct": raw.get("daily", {}).get("percentageChange", 0),
+        "week_revenue_rupees": raw.get("weekly", {}).get("total", 0),
+        "week_vs_last_week_pct": raw.get("weekly", {}).get("percentageChange", 0),
+        "month_revenue_rupees": raw.get("monthly", {}).get("total", 0),
+        "month_vs_last_month_pct": raw.get("monthly", {}).get("percentageChange", 0),
+        "year_revenue_rupees": raw.get("yearly", {}).get("total", 0),
+    }
 
 async def get_orders(date: str = None, status: str = None) -> dict:
     params = {}
@@ -84,13 +94,31 @@ async def get_orders(date: str = None, status: str = None) -> dict:
 
 
 async def get_expenses(from_date: str = None, to_date: str = None) -> dict:
-    params = {}
-    if from_date:
-        params["from"] = from_date
-    if to_date:
-        params["to"] = to_date
-    response = await _request("GET", "/api/expenses", params=params)
-    return response.json()
+    # Bill-App API ignores date params — fetch all, filter in Python
+    response = await _request("GET", "/api/expenses")
+    all_expenses = response.json().get("data", [])
+
+    filtered = []
+    for e in all_expenses:
+        expense_date = (e.get("expenseDate") or "")[:10]
+        if from_date and expense_date < from_date:
+            continue
+        if to_date and expense_date > to_date:
+            continue
+        filtered.append({
+            "name": e.get("name"),
+            "type": e.get("type"),
+            "amount_rupees": e.get("amount", 0),
+            "date": expense_date,
+        })
+
+    return {
+        "expenses": filtered,
+        "total_rupees": sum(e["amount_rupees"] for e in filtered),
+        "count": len(filtered),
+        "from": from_date,
+        "to": to_date,
+    }
 
 
 async def get_customer_balance(phone: str) -> dict:
@@ -161,11 +189,28 @@ async def get_earnings_history(period: str = "day", num_periods: int = 7) -> dic
 
 
 async def get_all_customer_ledgers(status: str = None) -> dict:
-    params = {}
-    if status:
-        params["status"] = status
-    response = await _request("GET", "/api/ledger/all", params=params)
-    return response.json()
+    response = await _request("GET", "/api/ledger/all")
+    customers = response.json().get("data", [])
+
+    # Strip transactions[] — it bloats the payload and the LLM doesn't need it
+    # Only return customers with outstanding balance, sorted highest first
+    with_dues = [
+        {
+            "name": c.get("customerName"),
+            "phone": c.get("customerPhone"),
+            "balance_due_rupees": c.get("balanceDue", 0),
+            "last_activity": (c.get("lastActivity") or "")[:10],
+        }
+        for c in customers
+        if c.get("balanceDue", 0) > 0
+    ]
+    with_dues.sort(key=lambda x: x["balance_due_rupees"], reverse=True)
+
+    return {
+        "customers_with_dues": with_dues,
+        "total_outstanding_rupees": sum(c["balance_due_rupees"] for c in with_dues),
+        "count": len(with_dues),
+    }
 
 
 async def get_consumables_summary(date: str = None) -> dict:

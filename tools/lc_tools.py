@@ -108,9 +108,12 @@ async def get_expenses(from_date: str = None, to_date: str = None) -> str:
 async def get_orders(date: str = None, status: str = None) -> str:
     """Raw order list — individual orders with items, amounts, table, payment status.
     Triggers: "aaj ke orders", "show me orders", "pending orders", "kal ke orders",
-              "orders for [date]", "completed orders", "kitne orders aaye", "order details".
+              "orders for [date]", "completed orders", "kitne orders aaye", "order details",
+              "active order", "active orders right now", "current active orders",
+              "is there any active order", "koi active order hai", "abhi koi order hai",
+              "any order right now", "live orders", "ongoing orders".
     date: YYYY-MM-DD. Use resolve_date first if the user said a relative term like "kal".
-    status: "Completed" or "Pending". Omit for all orders."""
+    status: "Completed" or "Pending". Omit for all orders. For active/live orders use status="Pending"."""
     result = await _orders(date, status)
     return codec.encode_tool_result("get_orders", result)
 
