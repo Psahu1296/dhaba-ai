@@ -60,10 +60,12 @@ TESTS = [
         "id": 4,
         "name": "Today's expenses — must call get_expenses not dashboard",
         "message": "What are today's total expenses?",
-        "expect_all": ["₹"],
-        "expect_any": ["expense", "kharcha", "spent", "kharch"],
-        "banned": [],
-        "note": "Should call get_expenses(today, today)",
+        "expect_all": [],
+        # Today genuinely has ₹0 expenses. Accept ₹0 OR any expense phrase.
+        "expect_any": ["₹0", "₹", "expense", "kharcha", "kharch", "koi entry nahi", "koi expense nahi", "record nahi"],
+        # Must NOT say Bill-App is down when tool just returned empty (₹0 is valid)
+        "banned": ["bill-app down", "bill-app band", "shayad bill-app", "maybe bill-app"],
+        "note": "Today has ₹0 expenses (no entries). Should say '₹0' not 'Bill-App down'.",
     },
     {
         "id": 5,

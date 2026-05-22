@@ -112,12 +112,14 @@ async def get_expenses(from_date: str = None, to_date: str = None) -> dict:
             "date": expense_date,
         })
 
+    total = sum(e["amount_rupees"] for e in filtered)
     return {
         "expenses": filtered,
-        "total_rupees": sum(e["amount_rupees"] for e in filtered),
+        "total_rupees": total,
         "count": len(filtered),
         "from": from_date,
         "to": to_date,
+        "note": "No expenses recorded for this period — ₹0 is valid, not an error." if not filtered else None,
     }
 
 
