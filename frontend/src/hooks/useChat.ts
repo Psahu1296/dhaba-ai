@@ -77,7 +77,7 @@ export function useChat() {
         if (done) break
         const token = decoder.decode(value)
         setMessages(prev => prev.map(m =>
-          m.id === assistantId ? { ...m, content: m.content + token } : m
+          m.id === assistantId ? { ...m, content: m.content + token, lastTokenAt: Date.now() } : m
         ))
       }
     } catch (e: any) {
@@ -123,7 +123,7 @@ export function useChat() {
         if (done) break
         const token = decoder.decode(value)
         setMessages(prev => prev.map(m =>
-          m.id === assistantId ? { ...m, content: m.content + token } : m
+          m.id === assistantId ? { ...m, content: m.content + token, lastTokenAt: Date.now() } : m
         ))
       }
     } catch (e: any) {

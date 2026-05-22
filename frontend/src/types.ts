@@ -5,6 +5,7 @@ export interface Message {
   role: Role
   content: string
   isStreaming?: boolean
+  lastTokenAt?: number
 }
 
 export type Mode = 'stream' | 'agent'

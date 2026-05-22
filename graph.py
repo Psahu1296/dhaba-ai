@@ -8,7 +8,7 @@ from tools.lc_tools import ALL_TOOLS
 from tools import codec
 import psycopg
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 
@@ -55,52 +55,20 @@ Use this to frame every answer: "Normal day", "Strong day", "Slow day" — not j
 You only answer questions about Sahu Family Dhaba's live business data — orders, revenue, dishes, expenses, customers, reports.
 For anything outside this (menu suggestions, marketing copy, general knowledge, weather, etc.) say: "Yeh mere scope ke baahir hai — main sirf dhaba ka live data dekh sakta hoon."
 
-## Tool Routing
-- Today's top selling items → get_todays_top_items
-- Peak hours / busiest time today → get_peak_hours_today
-- All-time historical bestsellers → get_top_dishes
-- Revenue for today / this week / this month / this year → get_dashboard_kpis (most accurate — reads live orders)
-- Revenue trends, best/worst day, highest revenue day this month → get_earnings_history (period='day', num_periods=31)
-- Best/worst week → get_earnings_history (period='week', num_periods=8)
-- NEVER use get_revenue for "how much did we earn" questions — use get_dashboard_kpis instead
+## Tool Use
+Each tool's docstring tells you exactly when to use it — read those, not this section.
+Key rule: if the user mentions any relative time (kal, yesterday, last week, etc.) — call resolve_date FIRST to get the concrete date, then pass that to data tools.
 
-## Never Refuse
-You have tools covering orders, revenue, dishes, expenses, customers, and daily history.
-NEVER say "I don't have that data" or "you might want to check elsewhere" for any business question.
-If you're unsure which tool to use — try get_earnings_history or get_orders first, then answer from the result.
-- List veg dishes, list non-veg, full menu, filter by price → get_all_dishes
-- Look up a specific dish by name or ingredient → search_dishes
-- Orders on a specific date → get_orders
-- Expenses → get_expenses
-- One customer's balance (needs phone) → get_customer_balance
-- All customer dues / who owes most → get_all_customer_ledgers
-- Tea/chai/gutka/cigarette usage → get_consumables_summary
-- Historical day patterns, best/worst periods → search_daily_history
-
-## Business Report
-When asked for a "business report", "how is business today", or similar — call these 4 tools:
-1. get_dashboard_kpis
-2. get_todays_top_items
-3. get_expenses (for today's date)
-4. get_peak_hours_today
-Lead with a one-line verdict: "Strong day — ₹X revenue, up Y% vs yesterday." or "Slow day — only Z orders, below weekly average." Then break down each section.
-
-## Historical Report (yesterday or a specific past date)
-When asked for yesterday's report, last [date]'s report, or "how was business on [date]":
-1. Compute the target date using today's date (today is injected at the end — yesterday = today minus 1 day)
-2. Call get_earnings_history(period='day', num_periods=7) — find the target date's revenue row
-3. Call get_todays_top_items(date=TARGET_DATE) — what sold that day (pass YYYY-MM-DD)
-4. Call get_peak_hours_today(date=TARGET_DATE) — busiest hours that day (pass YYYY-MM-DD)
-5. Call get_expenses(from_date=TARGET_DATE, to_date=TARGET_DATE) — expenses that day
-Lead with: "Here's the report for [date]:" then cover revenue, top items, peak hours, expenses.
-NEVER use get_dashboard_kpis for historical dates — it only returns current period totals, not past dates.
-NEVER use get_top_dishes for a specific date — it returns all-time cumulative counts, not daily sales.
+## Reports
+When asked for a full business report for TODAY: call get_dashboard_kpis + get_todays_top_items + get_peak_hours_today + get_expenses (today's date). Lead with one verdict line: "Strong day — ₹X revenue." or "Slow day — only Z orders."
+When asked for a report for a PAST DATE: call resolve_date first, then get_earnings_history + get_todays_top_items(date) + get_peak_hours_today(date) + get_expenses(date). Lead with: "Here's [date]'s report:"
 
 ## When Data Is Missing or Tools Fail
-- Empty result: state it clearly, suggest what to check. Never invent data.
-  Example: "No orders found for that date — were they entered in the POS?"
-- Bill-App unreachable: "Can't reach the POS right now — is Bill-App running on port 5002?"
-- Question outside your tools or dhaba identity: say "I don't have that info yet" — never answer from general knowledge as if it's real dhaba data.
+CRITICAL: Never invent or guess business numbers. Revenue, orders, expenses must always come from tool results.
+- If a tool returns an error or empty data: say exactly what failed. Example: "Orders data unavailable — Bill-App might be down."
+- If tool result has no entry for a date: "No data found for [date] — were orders entered in the POS?"
+- If Bill-App is unreachable: "Can't reach the POS right now — is Bill-App running?"
+- NEVER fill in a number from memory, context, or estimation. A wrong number is worse than no number.
 """)
 
 OWNER_SCOPE = """
@@ -135,12 +103,20 @@ def should_continue(state: MessagesState) -> str:
 
 async def call_llm(state: MessagesState, config: RunnableConfig):
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    today = now.date()
     role = config.get("configurable", {}).get("role", "admin")
     scope = STAFF_SCOPE if role == "staff" else OWNER_SCOPE
+    date_block = (
+        f"Current date: {today.isoformat()} ({today.strftime('%A, %d %B %Y')}). "
+        f"Current time: {now.strftime('%H:%M')} IST.\n"
+        f"Pre-resolved dates (use directly as tool parameters — no calculation needed):\n"
+        f"  today={today.isoformat()}, yesterday={(today - timedelta(days=1)).isoformat()}, "
+        f"  day_before_yesterday={(today - timedelta(days=2)).isoformat()}, "
+        f"  this_week_start={(today - timedelta(days=today.weekday())).isoformat()}, "
+        f"  this_month_start={today.replace(day=1).isoformat()}"
+    )
     dated_prompt = SystemMessage(
-        content=f"Current date: {now.strftime('%Y-%m-%d')}. Current time: {now.strftime('%H:%M')} IST.\n\n"
-        + SYSTEM_PROMPT.content
-        + scope
+        content=date_block + "\n\n" + SYSTEM_PROMPT.content + scope
     )
     messages = [dated_prompt] + state["messages"][-8:]
     response = await _llm_with_tools.ainvoke(messages)

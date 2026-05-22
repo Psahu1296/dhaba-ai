@@ -50,15 +50,27 @@ async def login() -> None:
     # Same as browser storing httpOnly cookie after login
 
 
-async def get_top_dishes(limit: int = 5) -> dict:
-    response = await _client.get("/api/dishes/frequent", params={"limit": limit})
+async def _request(method: str, url: str, **kwargs):
+    """Auto-refreshes Bill-App session on 401 before failing."""
+    response = await _client.request(method, url, **kwargs)
+    if response.status_code == 401:
+        logger.warning("Bill-App session expired — re-authenticating")
+        if os.path.exists(COOKIE_FILE):
+            os.remove(COOKIE_FILE)
+        _client.cookies.clear()
+        await login()
+        response = await _client.request(method, url, **kwargs)
     response.raise_for_status()
+    return response
+
+
+async def get_top_dishes(limit: int = 5) -> dict:
+    response = await _request("GET", "/api/dishes/frequent", params={"limit": limit})
     return response.json()
 
 
 async def get_dashboard_kpis() -> dict:
-    response = await _client.get("/api/earnings/dashboard")
-    response.raise_for_status()
+    response = await _request("GET", "/api/earnings/dashboard")
     return response.json()
 
 async def get_orders(date: str = None, status: str = None) -> dict:
@@ -67,8 +79,7 @@ async def get_orders(date: str = None, status: str = None) -> dict:
         params["startDate"] = date
     if status:
         params["orderStatus"] = status
-    response = await _client.get("/api/order", params=params)
-    response.raise_for_status()
+    response = await _request("GET", "/api/order", params=params)
     return response.json()
 
 
@@ -78,26 +89,22 @@ async def get_expenses(from_date: str = None, to_date: str = None) -> dict:
         params["from"] = from_date
     if to_date:
         params["to"] = to_date
-    response = await _client.get("/api/expenses", params=params)
-    response.raise_for_status()
+    response = await _request("GET", "/api/expenses", params=params)
     return response.json()
 
 
 async def get_customer_balance(phone: str) -> dict:
-    response = await _client.get(f"/api/ledger/{phone}")
-    response.raise_for_status()
+    response = await _request("GET", f"/api/ledger/{phone}")
     return response.json()
 
 
 async def get_revenue(period: str = "day") -> dict:
-    response = await _client.get(f"/api/earnings/{period}")
-    response.raise_for_status()
+    response = await _request("GET", f"/api/earnings/{period}")
     return response.json()
 
 
 async def get_all_dishes() -> list:
-    response = await _client.get("/api/dishes")
-    response.raise_for_status()
+    response = await _request("GET", "/api/dishes")
     data = response.json()
     return data.get("data", [])
 
@@ -149,8 +156,7 @@ async def get_peak_hours_today(date: str = None) -> dict:
 
 
 async def get_earnings_history(period: str = "day", num_periods: int = 7) -> dict:
-    response = await _client.get(f"/api/earnings/{period}", params={"numPeriods": num_periods})
-    response.raise_for_status()
+    response = await _request("GET", f"/api/earnings/{period}", params={"numPeriods": num_periods})
     return response.json()
 
 
@@ -158,8 +164,7 @@ async def get_all_customer_ledgers(status: str = None) -> dict:
     params = {}
     if status:
         params["status"] = status
-    response = await _client.get("/api/ledger/all", params=params)
-    response.raise_for_status()
+    response = await _request("GET", "/api/ledger/all", params=params)
     return response.json()
 
 
@@ -167,6 +172,5 @@ async def get_consumables_summary(date: str = None) -> dict:
     params = {}
     if date:
         params["date"] = date
-    response = await _client.get("/api/consumables/summary/day", params=params)
-    response.raise_for_status()
+    response = await _request("GET", "/api/consumables/summary/day", params=params)
     return response.json()

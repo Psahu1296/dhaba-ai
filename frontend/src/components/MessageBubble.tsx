@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useState, useEffect } from 'react'
 import type { Message } from '../types'
 import { BotMessageSquare, User } from 'lucide-react'
 
@@ -24,7 +25,7 @@ export function MessageBubble({ message }: Props) {
             : 'bg-white/[0.03] backdrop-blur-3xl border border-white/10 text-zinc-100 rounded-tl-sm shadow-[0_8px_30px_rgba(0,0,0,0.5)]'
         }`}
       >
-        <FormattedContent content={message.content} isStreaming={message.isStreaming} />
+        <FormattedContent content={message.content} isStreaming={message.isStreaming} lastTokenAt={message.lastTokenAt} />
       </div>
 
       {isUser && (
@@ -36,7 +37,18 @@ export function MessageBubble({ message }: Props) {
   )
 }
 
-function FormattedContent({ content, isStreaming }: { content: string; isStreaming?: boolean }) {
+function FormattedContent({ content, isStreaming, lastTokenAt }: { content: string; isStreaming?: boolean; lastTokenAt?: number }) {
+  const [isFetching, setIsFetching] = useState(false)
+
+  useEffect(() => {
+    if (!isStreaming || !content) {
+      setIsFetching(false)
+      return
+    }
+    const timer = setTimeout(() => setIsFetching(true), 600)
+    return () => clearTimeout(timer)
+  }, [isStreaming, content, lastTokenAt])
+
   if (!content && isStreaming) {
     return (
       <span className="flex gap-2 items-center py-2 px-1">
@@ -71,8 +83,14 @@ function FormattedContent({ content, isStreaming }: { content: string; isStreami
           ? <CodeBlock key={i} lang={seg.lang ?? ''} code={seg.content} />
           : <TextSegment key={i} text={seg.content} />
       )}
-      {isStreaming && (
+      {isStreaming && !isFetching && (
         <span className="inline-block w-2 h-5 bg-amber-400 rounded-[1px] animate-pulse ml-1 mt-2 align-middle shadow-[0_0_10px_rgba(251,191,36,0.6)]" />
+      )}
+      {isStreaming && isFetching && (
+        <span className="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] font-bold uppercase tracking-wider">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          Fetching data…
+        </span>
       )}
     </div>
   )
