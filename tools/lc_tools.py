@@ -176,9 +176,13 @@ async def get_earnings_history(period: str = "day", num_periods: int = 7) -> str
 @tool
 async def get_all_customer_ledgers(status: str = None) -> str:
     """All customers with outstanding balances, sorted by amount owed (highest first), with grand total.
-    Triggers: "total outstanding", "who owes money", "customer dues list", "baaki list",
-              "sabse zyada baaki kiske paas", "udhar list", "all pending payments",
-              "kitna total udhar hai", "credit customers".
+    IMPORTANT: Call this whenever anyone asks about customer balances WITHOUT providing a phone number.
+    Triggers: "total outstanding", "who owes money", "who owes us the most", "who has due",
+              "customers with balance due", "customer dues list", "baaki list", "outstanding customers",
+              "sabse zyada baaki kiske paas", "udhar list", "all pending payments", "credit customers",
+              "kitna total udhar hai", "any due", "who has pending payment", "due customers",
+              "customers with dues", "who hasn't paid", "unpaid customers".
+    NEVER ask for a phone number for this — it returns all customers at once.
     status: filter if needed. Omit for all customers with any balance."""
     result = await _all_ledgers(status)
     return codec.encode_tool_result("get_all_customer_ledgers", result)
