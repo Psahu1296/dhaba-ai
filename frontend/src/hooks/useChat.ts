@@ -4,7 +4,18 @@ import type { Message, Mode } from '../types'
 const TOON_SAVED_RE = /\[TOON_SAVED:(\d+)\]$/
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8001'
-const API_KEY = import.meta.env.VITE_API_KEY ?? 'dhaba-secret-key-2024'
+
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem('dhaba_auth')
+    if (raw) {
+      const { token } = JSON.parse(raw)
+      return { Authorization: `Bearer ${token}` }
+    }
+  } catch {}
+  const fallback = import.meta.env.VITE_API_KEY ?? ''
+  return fallback ? { 'X-API-Key': fallback } : {}
+}
 
 function uid() {
   return Math.random().toString(36).slice(2)
@@ -53,7 +64,7 @@ export function useChat() {
     try {
       const res = await fetch(`${API_BASE}/chat/stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ message: text }),
         signal: abortRef.current.signal,
       })
@@ -99,7 +110,7 @@ export function useChat() {
     try {
       const res = await fetch(`${API_BASE}/agent/chat/stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ message: text, session_id: currentSessionId }),
         signal: abortRef.current.signal,
       })
@@ -144,7 +155,7 @@ export function useChat() {
     setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', isStreaming: true }])
     try {
       const res = await fetch(`${API_BASE}/report/latest`, {
-        headers: { 'X-API-Key': API_KEY },
+        headers: { ...getAuthHeaders() },
       })
       const data = await res.json()
       const content = data.report_date

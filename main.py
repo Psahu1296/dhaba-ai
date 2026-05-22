@@ -1,9 +1,8 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from sched import scheduler
-from fastapi import FastAPI, Depends, HTTPException, Security
-from fastapi.security import APIKeyHeader
+from fastapi import FastAPI, Depends, HTTPException, Security, Request
+from fastapi.security import APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -11,8 +10,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from typing import Optional
 import uuid
+import jwt as pyjwt
+import httpx
 
-from config import API_KEY, DATABASE_URL
+from config import API_KEY, DATABASE_URL, JWT_SECRET, BILL_APP_URL
 from tools.bill_app import login, get_top_dishes, get_dashboard_kpis
 from tools.daily_embedder import embed_day
 from tools.embedder import embed_menu
@@ -68,6 +69,7 @@ app.add_middleware(
 )
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def require_api_key(key: str = Security(api_key_header)):
@@ -76,14 +78,56 @@ async def require_api_key(key: str = Security(api_key_header)):
     return key
 
 
+async def get_current_user(
+    key: str = Security(api_key_header),
+    bearer: HTTPAuthorizationCredentials = Security(bearer_scheme),
+) -> dict:
+    if key and key == API_KEY:
+        return {"role": "admin", "name": "API User"}
+    if bearer:
+        try:
+            payload = pyjwt.decode(bearer.credentials, JWT_SECRET, algorithms=["HS256"])
+            return {"role": payload.get("role", "staff"), "name": payload.get("name", "")}
+        except pyjwt.PyJWTError:
+            pass
+    raise HTTPException(status_code=401, detail="Invalid or missing auth")
+
+
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
 
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
 @app.get("/")
 async def root():
     return {"status": "Dhaba AI running"}
+
+
+@app.post("/login")
+async def login(req: LoginRequest):
+    async with httpx.AsyncClient(base_url=BILL_APP_URL, timeout=10) as client:
+        r = await client.post("/api/user/login", json={"email": req.email, "password": req.password})
+        if r.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        cookie = r.cookies.get("accessToken")
+        if not cookie:
+            raise HTTPException(status_code=401, detail="Bill-App did not return a session")
+        r2 = await client.get("/api/user", cookies={"accessToken": cookie})
+        if r2.status_code != 200:
+            raise HTTPException(status_code=401, detail="Could not fetch user profile")
+        user = r2.json()["data"]
+
+    token = pyjwt.encode(
+        {"email": user["email"], "name": user["name"], "role": user["role"]},
+        JWT_SECRET,
+        algorithm="HS256",
+    )
+    return {"token": token, "role": user["role"], "name": user["name"]}
 
 
 @app.post("/admin/embed-day", dependencies=[Depends(require_api_key)])
@@ -117,18 +161,18 @@ async def chat_stream_endpoint(req: ChatRequest):
     return StreamingResponse(generate(), media_type="text/plain")
 
 
-@app.post("/agent/chat", dependencies=[Depends(require_api_key)])
-async def agent_chat(req: ChatRequest):
+@app.post("/agent/chat")
+async def agent_chat(req: ChatRequest, user: dict = Depends(get_current_user)):
     thread_id = req.session_id or str(uuid.uuid4())
-    answer = await run_graph(req.message, thread_id)
+    answer = await run_graph(req.message, thread_id, role=user["role"])
     return {"answer": answer, "session_id": thread_id, "toon_chars_saved": codec.total_chars_saved()}
 
 
-@app.post("/agent/chat/stream", dependencies=[Depends(require_api_key)])
-async def agent_chat_stream(req: ChatRequest):
+@app.post("/agent/chat/stream")
+async def agent_chat_stream(req: ChatRequest, user: dict = Depends(get_current_user)):
     thread_id = req.session_id or str(uuid.uuid4())
     async def generate():
-        async for token in run_graph_stream(req.message, thread_id):
+        async for token in run_graph_stream(req.message, thread_id, role=user["role"]):
             yield token
     return StreamingResponse(generate(), media_type="text/plain")
 

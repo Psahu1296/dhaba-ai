@@ -10,15 +10,15 @@ export function MessageBubble({ message }: Props) {
   const isUser = message.role === 'user'
 
   return (
-    <div className={`flex w-full mb-6 ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+    <div className={`flex w-full mb-4 sm:mb-6 ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in`}>
       {!isUser && (
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zinc-800 to-black border border-orange-500/20 flex items-center justify-center text-orange-500 mr-4 shrink-0 shadow-[0_0_15px_rgba(249,115,22,0.1)] mt-1">
-          <BotMessageSquare size={18} strokeWidth={2.5} />
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-zinc-800 to-black border border-orange-500/20 flex items-center justify-center text-orange-500 mr-2 sm:mr-4 shrink-0 shadow-[0_0_15px_rgba(249,115,22,0.1)] mt-1">
+          <BotMessageSquare size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
         </div>
       )}
 
       <div
-        className={`max-w-[85%] rounded-2xl px-6 py-5 text-[15px] leading-relaxed ${
+        className={`max-w-[92%] sm:max-w-[85%] rounded-2xl px-4 sm:px-6 py-4 sm:py-5 text-[14px] sm:text-[15px] leading-relaxed ${
           isUser
             ? 'bg-gradient-to-br from-orange-500 to-amber-600 text-white rounded-tr-sm shadow-[0_8px_20px_rgba(249,115,22,0.25)] border border-orange-400/30'
             : 'bg-white/[0.03] backdrop-blur-3xl border border-white/10 text-zinc-100 rounded-tl-sm shadow-[0_8px_30px_rgba(0,0,0,0.5)]'
@@ -28,8 +28,8 @@ export function MessageBubble({ message }: Props) {
       </div>
 
       {isUser && (
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zinc-700 to-zinc-900 border border-white/10 flex items-center justify-center text-zinc-400 ml-4 shrink-0 shadow-inner mt-1">
-          <User size={18} strokeWidth={2.5} />
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-zinc-700 to-zinc-900 border border-white/10 flex items-center justify-center text-zinc-400 ml-2 sm:ml-4 shrink-0 shadow-inner mt-1">
+          <User size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
         </div>
       )}
     </div>

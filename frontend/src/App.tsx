@@ -1,12 +1,20 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useChat } from './hooks/useChat'
+import { useAuth } from './hooks/useAuth'
 import { MessageBubble } from './components/MessageBubble'
 import { InputBar } from './components/InputBar'
-import { BotMessageSquare, BarChart3, UtensilsCrossed, Banknote, PackageOpen, Sparkles, BrainCircuit, Zap, Leaf, ScrollText } from 'lucide-react'
+import { LoginPage } from './components/LoginPage'
+import { BotMessageSquare, BarChart3, UtensilsCrossed, Banknote, PackageOpen, Sparkles, BrainCircuit, Zap, Leaf, ScrollText, LogOut, Menu, X } from 'lucide-react'
 import type { Mode } from './types'
 
 export default function App() {
+  const { user, error: authError, isLoading: authLoading, login, logout } = useAuth()
   const { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, clearChat, stopGeneration, loadDailyReport } = useChat()
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  if (!user) {
+    return <LoginPage onLogin={login} error={authError} isLoading={authLoading} />
+  }
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -22,24 +30,33 @@ export default function App() {
       </div>
 
       {/* Header */}
-      <header className="px-4 sm:px-6 md:px-8 py-4 border-b border-white/5 bg-black/40 backdrop-blur-2xl shrink-0 shadow-sm flex justify-center w-full relative z-10">
-        <div className="w-full max-w-4xl flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20 flex items-center justify-center text-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.15)] group">
-              <BotMessageSquare size={22} className="group-hover:scale-110 transition-transform duration-300" strokeWidth={2.5} />
+      <header className="px-4 sm:px-6 md:px-8 py-4 border-b border-white/5 bg-black/40 backdrop-blur-2xl shrink-0 shadow-sm flex justify-center w-full relative z-20">
+        <div className="w-full max-w-4xl flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0">
+          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20 flex items-center justify-center text-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.15)] group shrink-0">
+                <BotMessageSquare size={22} className="group-hover:scale-110 transition-transform duration-300" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h1 className="font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500 tracking-tight leading-tight">
+                  Dhaba AI
+                </h1>
+                <p className="text-[10px] text-zinc-500 font-black tracking-[0.2em] uppercase mt-0.5">
+                  Business Intelligence
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500 tracking-tight leading-tight">
-                Dhaba AI
-              </h1>
-              <p className="text-[10px] text-zinc-500 font-black tracking-[0.2em] uppercase mt-0.5">
-                Business Intelligence
-              </p>
-            </div>
+            
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors"
+            >
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1 p-1 bg-black/40 rounded-[14px] border border-white/5 shadow-inner backdrop-blur-sm">
+          <div className={`${isMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row items-stretch md:items-center justify-center md:justify-end gap-2 md:gap-3 w-full md:w-auto pt-4 md:pt-0 border-t border-white/5 md:border-none mt-4 md:mt-0`}>
+            <div className="flex w-full md:w-auto items-center gap-1 p-1 bg-black/40 rounded-[14px] border border-white/5 shadow-inner backdrop-blur-sm">
               {(['stream', 'agent'] as Mode[]).map(m => {
                 const isActive = mode === m
                 const Icon = m === 'stream' ? Zap : BrainCircuit
@@ -47,7 +64,7 @@ export default function App() {
                   <button
                     key={m}
                     onClick={() => setMode(m)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${isActive
+                    className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 md:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${isActive
                       ? 'bg-orange-500/10 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.15)] border border-orange-500/20'
                       : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5 border border-transparent'
                       }`}
@@ -59,40 +76,56 @@ export default function App() {
               })}
             </div>
 
-            <button
-              onClick={loadDailyReport}
-              disabled={isLoading}
-              className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-zinc-500 hover:text-amber-400 transition-colors px-4 py-2 rounded-xl hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 disabled:opacity-40"
-            >
-              <ScrollText size={13} />
-              Report
-            </button>
+            <div className="flex gap-2 w-full md:w-auto">
+              <button
+                onClick={loadDailyReport}
+                disabled={isLoading}
+                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-zinc-500 hover:text-amber-400 transition-colors px-3 sm:px-4 py-2.5 md:py-2 rounded-[14px] bg-black/40 md:bg-transparent hover:bg-amber-500/10 border border-white/5 md:border-transparent hover:border-amber-500/20 disabled:opacity-40"
+              >
+                <ScrollText size={13} />
+                <span>Report</span>
+              </button>
 
-            <button
-              onClick={clearChat}
-              className="text-[11px] font-black uppercase tracking-wider text-zinc-500 hover:text-red-400 transition-colors px-4 py-2 rounded-xl hover:bg-red-500/10 border border-transparent hover:border-red-500/20"
-            >
-              Clear
-            </button>
+              <button
+                onClick={clearChat}
+                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-zinc-500 hover:text-red-400 transition-colors px-3 sm:px-4 py-2.5 md:py-2 rounded-[14px] bg-black/40 md:bg-transparent hover:bg-red-500/10 border border-white/5 md:border-transparent hover:border-red-500/20"
+              >
+                Clear
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-2 p-2 md:p-0 md:pl-3 border-t md:border-t-0 md:border-l border-white/10 mt-1 md:mt-0">
+              <span className="text-[11px] sm:text-[12px] text-zinc-400 font-medium capitalize pl-1 md:pl-0">{user.role}</span>
+              <button
+                onClick={logout}
+                title="Sign out"
+                className="text-zinc-500 flex items-center gap-2 hover:text-red-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/10 font-bold uppercase tracking-wider text-[10px]"
+              >
+                <span className="md:hidden">Sign Out</span>
+                <LogOut size={14} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Mode indicator */}
       <div className="px-4 sm:px-6 md:px-8 py-2.5 bg-black/30 backdrop-blur-md border-b border-white/5 shrink-0 relative z-10 shadow-sm flex justify-center w-full">
-        <div className="w-full max-w-4xl flex items-center gap-3 text-[10px] font-black tracking-widest uppercase">
-          {mode === 'agent' ? (
-            <>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
-              <span className="text-zinc-400">LANGGRAPH AGENT <span className="text-zinc-600 mx-2">/</span> MULTI-STEP REASONING <span className="text-zinc-600 mx-2">/</span> MEMORY ENABLED</span>
-            </>
-          ) : (
-            <>
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] animate-pulse" />
-              <span className="text-zinc-400">STREAMING MODE <span className="text-zinc-600 mx-2">/</span> LIVE TOKENS <span className="text-zinc-600 mx-2">/</span> NO MEMORY</span>
-            </>
-          )}
-          <div className="ml-auto flex items-center gap-2 shrink-0">
+        <div className="w-full max-w-4xl flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-[10px] font-black tracking-widest uppercase">
+          <div className="flex items-center gap-2 text-center sm:text-left justify-center flex-wrap">
+            {mode === 'agent' ? (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse shrink-0" />
+                <span className="text-zinc-400">LANGGRAPH AGENT <span className="text-zinc-600 mx-1 sm:mx-2">/</span> <span className="hidden md:inline">MULTI-STEP REASONING <span className="text-zinc-600 mx-2">/</span> </span>MEMORY ENABLED</span>
+              </>
+            ) : (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] animate-pulse shrink-0" />
+                <span className="text-zinc-400">STREAMING MODE <span className="text-zinc-600 mx-1 sm:mx-2">/</span> <span className="hidden md:inline">LIVE TOKENS <span className="text-zinc-600 mx-2">/</span> </span>NO MEMORY</span>
+              </>
+            )}
+          </div>
+          <div className="sm:ml-auto flex flex-wrap justify-center items-center gap-2 shrink-0">
             {mode === 'agent' && (
               <span className="font-mono text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md border border-white/5">
                 SESSION: {sessionId.slice(0, 8)}

@@ -35,12 +35,12 @@ export function InputBar({ onSend, onStop, isLoading, hasMessages }: Props) {
   return (
     <div className="w-full flex flex-col gap-4">
       {!hasMessages && (
-        <div className="flex flex-wrap gap-2.5 w-full">
+        <div className="flex overflow-x-auto scrollbar-thin flex-nowrap gap-2 sm:gap-2.5 w-full pb-2">
           {SUGGESTIONS.map(s => (
             <button
               key={s}
               onClick={() => onSend(s)}
-              className="text-[13px] font-medium px-4 py-2.5 rounded-[1.25rem] border border-white/10 bg-white/[0.03] text-zinc-300 hover:border-orange-500/50 hover:text-white hover:bg-orange-500/10 hover:shadow-[0_0_15px_rgba(249,115,22,0.2)] transition-all duration-300"
+              className="shrink-0 whitespace-nowrap text-[12px] sm:text-[13px] font-medium px-3 sm:px-4 py-2 sm:py-2.5 rounded-[1.25rem] border border-white/10 bg-white/[0.03] text-zinc-300 hover:border-orange-500/50 hover:text-white hover:bg-orange-500/10 hover:shadow-[0_0_15px_rgba(249,115,22,0.2)] transition-all duration-300 text-center"
             >
               {s}
             </button>

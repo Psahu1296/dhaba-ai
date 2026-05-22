@@ -11,6 +11,7 @@ BILL_APP_PASSWORD = os.getenv("BILL_APP_PASSWORD")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://localhost:11434/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2")
 API_KEY = os.getenv("API_KEY")
+JWT_SECRET = os.getenv("JWT_SECRET", "dhaba-ai-jwt-secret-change-in-prod")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 
