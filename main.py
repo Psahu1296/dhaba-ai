@@ -14,7 +14,7 @@ import jwt as pyjwt
 import httpx
 
 from config import API_KEY, DATABASE_URL, JWT_SECRET, BILL_APP_URL
-from tools.bill_app import login, get_top_dishes, get_dashboard_kpis
+from tools.bill_app import login as bill_app_login, get_top_dishes, get_dashboard_kpis
 from tools.daily_embedder import embed_day
 from tools.embedder import embed_menu
 from tools import codec
@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
     await init_graph(DATABASE_URL)
     async def _bg_startup():
         try:
-            await login()
+            await bill_app_login()
             logger.info("Logged into Bill-App")
         except Exception as e:
             logger.warning(f"Bill-App login failed: {e}")
@@ -147,13 +147,13 @@ async def kpis():
     return await get_dashboard_kpis()
 
 
-@app.post("/chat", dependencies=[Depends(require_api_key)])
+@app.post("/chat", dependencies=[Depends(get_current_user)])
 async def chat(req: ChatRequest):
     answer = await run_agent(req.message)
     return {"answer": answer, "toon_chars_saved": codec.total_chars_saved()}
 
 
-@app.post("/chat/stream", dependencies=[Depends(require_api_key)])
+@app.post("/chat/stream", dependencies=[Depends(get_current_user)])
 async def chat_stream_endpoint(req: ChatRequest):
     async def generate():
         async for token in run_agent_stream(req.message):
