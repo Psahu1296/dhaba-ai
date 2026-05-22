@@ -103,6 +103,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class FeedbackRequest(BaseModel):
+    session_id: str
+    query: str
+    response: str
+    rating: int               # 1 = good, -1 = bad
+    source: str = "explicit"  # "explicit" | "implicit"
+    correction: Optional[str] = None
+
+
 @app.get("/")
 async def root():
     return {"status": "Dhaba AI running"}
@@ -128,6 +137,19 @@ async def login(req: LoginRequest):
         algorithm="HS256",
     )
     return {"token": token, "role": user["role"], "name": user["name"]}
+
+
+@app.post("/feedback", dependencies=[Depends(get_current_user)])
+async def submit_feedback(req: FeedbackRequest):
+    from db import save_feedback
+    await save_feedback(req.session_id, req.query, req.response, req.rating, req.source, req.correction)
+    return {"status": "saved"}
+
+
+@app.get("/admin/feedback/stats", dependencies=[Depends(require_api_key)])
+async def feedback_stats():
+    from db import get_feedback_stats
+    return await get_feedback_stats()
 
 
 @app.post("/admin/embed-day", dependencies=[Depends(require_api_key)])

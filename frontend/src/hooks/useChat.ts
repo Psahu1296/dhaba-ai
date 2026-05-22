@@ -3,6 +3,18 @@ import type { Message, Mode } from '../types'
 
 const TOON_SAVED_RE = /\[TOON_SAVED:(\d+)\]$/
 
+const IMPLICIT_NEGATIVE = [
+  'wrong', 'incorrect', 'galat', 'sahi nahi', 'check again', 'dobara check',
+  'values are wrong', 'numbers are wrong', "that's not right", 'yeh galat hai',
+  'woh sahi nahi', 'dobara dekho', 'phir se check', 'mistake', 'not right',
+  'wrong values', 'wrong data', 'wrong answer', 'incorrect data',
+]
+
+function isImplicitNegative(text: string): boolean {
+  const lower = text.toLowerCase()
+  return IMPLICIT_NEGATIVE.some(p => lower.includes(p))
+}
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8001'
 
 function getAuthHeaders(): Record<string, string> {
@@ -39,8 +51,47 @@ export function useChat() {
   const [totalCharsSaved, setTotalCharsSaved] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
 
+  const sendFeedback = useCallback(async (messageId: string, rating: 1 | -1, correction?: string) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, feedback: rating } : m))
+    const msg = messages.find(m => m.id === messageId)
+    if (!msg) return
+    try {
+      await fetch(`${API_BASE}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          session_id: sessionId,
+          query: msg.query ?? '',
+          response: msg.content,
+          rating,
+          source: 'explicit',
+          correction: correction ?? null,
+        }),
+      })
+    } catch {}
+  }, [messages, sessionId])
+
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return
+
+    if (isImplicitNegative(text)) {
+      const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.feedback === undefined)
+      if (lastAssistant) {
+        setMessages(prev => prev.map(m => m.id === lastAssistant.id ? { ...m, feedback: -1 } : m))
+        fetch(`${API_BASE}/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+          body: JSON.stringify({
+            session_id: sessionId,
+            query: lastAssistant.query ?? '',
+            response: lastAssistant.content,
+            rating: -1,
+            source: 'implicit',
+            correction: null,
+          }),
+        }).catch(() => {})
+      }
+    }
 
     const userMsg: Message = { id: uid(), role: 'user', content: text }
     setMessages(prev => [...prev, userMsg])
@@ -53,11 +104,11 @@ export function useChat() {
     }
 
     setIsLoading(false)
-  }, [mode, isLoading, sessionId])
+  }, [mode, isLoading, sessionId, messages])
 
   async function sendStreaming(text: string) {
     const assistantId = uid()
-    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', isStreaming: true }])
+    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', isStreaming: true, query: text }])
 
     abortRef.current = new AbortController()
 
@@ -101,7 +152,7 @@ export function useChat() {
 
   async function sendAgent(text: string) {
     const assistantId = uid()
-    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', isStreaming: true }])
+    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', isStreaming: true, query: text }])
 
     const currentSessionId = sessionId
 
@@ -177,5 +228,5 @@ export function useChat() {
     abortRef.current?.abort()
   }
 
-  return { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, clearChat, stopGeneration, loadDailyReport }
+  return { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, sendFeedback, clearChat, stopGeneration, loadDailyReport }
 }

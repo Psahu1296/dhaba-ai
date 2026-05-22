@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String, Text, DateTime
+from sqlalchemy import String, Text, DateTime, Integer, func, select
 from datetime import datetime, timezone
-from sqlalchemy import select
+from typing import Optional
 
 engine = None
 SessionLocal = None
@@ -35,6 +35,62 @@ class DailyReport(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
     )
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(100), index=True)
+    query: Mapped[str] = mapped_column(Text)
+    response: Mapped[str] = mapped_column(Text)
+    rating: Mapped[int] = mapped_column(Integer)          # 1 = good, -1 = bad
+    source: Mapped[str] = mapped_column(String(20), default="explicit")  # explicit | implicit
+    correction: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+async def save_feedback(
+    session_id: str, query: str, response: str,
+    rating: int, source: str = "explicit", correction: Optional[str] = None
+) -> None:
+    async with SessionLocal() as session:
+        session.add(Feedback(
+            session_id=session_id, query=query, response=response,
+            rating=rating, source=source, correction=correction,
+        ))
+        await session.commit()
+
+
+async def get_feedback_stats() -> dict:
+    async with SessionLocal() as session:
+        total = (await session.execute(select(func.count()).select_from(Feedback))).scalar()
+        positive = (await session.execute(
+            select(func.count()).select_from(Feedback).where(Feedback.rating == 1)
+        )).scalar()
+        negative = (await session.execute(
+            select(func.count()).select_from(Feedback).where(Feedback.rating == -1)
+        )).scalar()
+        corrections = (await session.execute(
+            select(func.count()).select_from(Feedback).where(
+                Feedback.rating == -1, Feedback.correction.isnot(None)
+            )
+        )).scalar()
+        rows = (await session.execute(
+            select(Feedback).where(Feedback.rating == -1, Feedback.correction.isnot(None))
+            .order_by(Feedback.created_at.desc()).limit(20)
+        )).scalars().all()
+        pending_evals = [
+            {"query": r.query, "correction": r.correction, "source": r.source}
+            for r in rows
+        ]
+    return {
+        "total": total, "positive": positive, "negative": negative,
+        "corrections_available": corrections, "pending_eval_candidates": pending_evals,
+    }
 
 
 async def save_daily_report(report_date: str, content: str) -> None:

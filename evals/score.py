@@ -1,7 +1,40 @@
 import json
 import os
+import sys
 
 RESULTS_FILE = os.path.join(os.path.dirname(__file__), "results.json")
+USE_LLM_JUDGE = "--llm-judge" in sys.argv
+
+
+def llm_judge(question: str, answer: str) -> tuple[int, str]:
+    """LLM-as-judge using GPT-4o-mini. Run with --llm-judge flag. ~$0.001/question."""
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        prompt = f"""You are evaluating a dhaba (Indian restaurant) AI assistant.
+Question: {question}
+Answer: {answer}
+
+Score the answer 1-5:
+5 = Correct, specific numbers/data, answers exactly what was asked
+4 = Mostly correct, minor gaps
+3 = Partially answers, missing key data
+2 = Vague or mostly wrong
+1 = Wrong, hallucinated, or refused to answer
+
+Reply with ONLY: <score>|<one line reason>
+Example: 4|Revenue correct but missing peak hours"""
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=60,
+            temperature=0,
+        )
+        raw = resp.choices[0].message.content.strip()
+        score, reason = raw.split("|", 1)
+        return int(score.strip()), reason.strip()
+    except Exception as e:
+        return 0, f"llm-judge error: {e}"
 
 
 def judge(_question: str, expected_topics: list, answer: str) -> tuple[int, str]:
@@ -45,7 +78,10 @@ def run_scoring():
             print(f"{r['id']:<4} {'ERROR':<7} {r['question'][:44]:<45}")
             continue
 
-        score, reason = judge(r["question"], r["expected_topics"], r["answer"])
+        if USE_LLM_JUDGE:
+            score, reason = llm_judge(r["question"], r["answer"])
+        else:
+            score, reason = judge(r["question"], r["expected_topics"], r["answer"])
         scores.append(score)
         stars = "★" * score + "☆" * (5 - score)
         print(f"{r['id']:<4} {stars} {r['question'][:44]:<45} {reason[:50]}")

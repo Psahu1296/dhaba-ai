@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
 import { useState, useEffect } from 'react'
 import type { Message } from '../types'
-import { BotMessageSquare, User } from 'lucide-react'
+import { BotMessageSquare, User, ThumbsUp, ThumbsDown } from 'lucide-react'
 
 interface Props {
   message: Message
+  onFeedback?: (messageId: string, rating: 1 | -1, correction?: string) => void
 }
 
-export function MessageBubble({ message }: Props) {
+export function MessageBubble({ message, onFeedback }: Props) {
   const isUser = message.role === 'user'
 
   return (
@@ -26,6 +27,9 @@ export function MessageBubble({ message }: Props) {
         }`}
       >
         <FormattedContent content={message.content} isStreaming={message.isStreaming} lastTokenAt={message.lastTokenAt} />
+        {!isUser && !message.isStreaming && message.content && onFeedback && (
+          <FeedbackBar messageId={message.id} feedback={message.feedback} onFeedback={onFeedback} />
+        )}
       </div>
 
       {isUser && (
@@ -222,6 +226,86 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
       <pre className="bg-black/60 p-4 overflow-x-auto text-[13px] leading-relaxed">
         <code className="text-zinc-300 font-mono">{code.trim()}</code>
       </pre>
+    </div>
+  )
+}
+
+function FeedbackBar({
+  messageId,
+  feedback,
+  onFeedback,
+}: {
+  messageId: string
+  feedback?: 1 | -1
+  onFeedback: (id: string, rating: 1 | -1, correction?: string) => void
+}) {
+  const [showCorrection, setShowCorrection] = useState(false)
+  const [correction, setCorrection] = useState('')
+
+  function handleUp() {
+    if (feedback !== undefined) return
+    onFeedback(messageId, 1)
+  }
+
+  function handleDown() {
+    if (feedback !== undefined) return
+    setShowCorrection(true)
+  }
+
+  function submitCorrection() {
+    onFeedback(messageId, -1, correction || undefined)
+    setShowCorrection(false)
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-white/5 flex flex-col gap-2">
+      <div className="flex items-center gap-1">
+        <button
+          onClick={handleUp}
+          disabled={feedback !== undefined}
+          title="Helpful"
+          className={`p-1.5 rounded-lg transition-colors ${
+            feedback === 1
+              ? 'text-emerald-400'
+              : 'text-zinc-600 hover:text-emerald-400 hover:bg-emerald-500/10 disabled:cursor-default'
+          }`}
+        >
+          <ThumbsUp size={13} strokeWidth={2} />
+        </button>
+        <button
+          onClick={handleDown}
+          disabled={feedback !== undefined}
+          title="Wrong answer"
+          className={`p-1.5 rounded-lg transition-colors ${
+            feedback === -1
+              ? 'text-red-400'
+              : 'text-zinc-600 hover:text-red-400 hover:bg-red-500/10 disabled:cursor-default'
+          }`}
+        >
+          <ThumbsDown size={13} strokeWidth={2} />
+        </button>
+        {feedback === 1 && <span className="text-[11px] text-emerald-600 ml-1">helpful</span>}
+        {feedback === -1 && !showCorrection && <span className="text-[11px] text-red-800 ml-1">flagged</span>}
+      </div>
+      {showCorrection && (
+        <div className="flex gap-2 items-start">
+          <textarea
+            value={correction}
+            onChange={e => setCorrection(e.target.value)}
+            placeholder="What should the correct answer be? (optional)"
+            rows={2}
+            autoFocus
+            className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[13px] text-zinc-300 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-orange-500/30"
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitCorrection() } }}
+          />
+          <button
+            onClick={submitCorrection}
+            className="px-3 py-2 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 rounded-xl text-orange-400 text-[11px] font-bold uppercase tracking-wider transition-colors"
+          >
+            Send
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -9,7 +9,7 @@ import type { Mode } from './types'
 
 export default function App() {
   const { user, error: authError, isLoading: authLoading, login, logout } = useAuth()
-  const { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, clearChat, stopGeneration, loadDailyReport } = useChat()
+  const { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, sendFeedback, clearChat, stopGeneration, loadDailyReport } = useChat()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   if (!user) {
@@ -147,7 +147,7 @@ export default function App() {
           <EmptyState onSend={sendMessage} />
         ) : (
           <div className="w-full max-w-4xl flex flex-col gap-5 pb-8">
-            {messages.map(m => <MessageBubble key={m.id} message={m} />)}
+            {messages.map(m => <MessageBubble key={m.id} message={m} onFeedback={sendFeedback} />)}
           </div>
         )}
         <div ref={bottomRef} className="w-full max-w-4xl" />
