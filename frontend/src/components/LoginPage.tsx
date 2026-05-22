@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react'
+import { useState } from 'react'
 import { BotMessageSquare } from 'lucide-react'
 
 interface Props {
@@ -11,7 +11,7 @@ export function LoginPage({ onLogin, error, isLoading }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: any) {
     e.preventDefault()
     await onLogin(email, password)
   }
