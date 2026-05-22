@@ -7,6 +7,8 @@ from tools.lc_tools import ALL_TOOLS
 from tools import codec
 import psycopg
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from datetime import date
+
 
 SYSTEM_PROMPT = SystemMessage(content="""Tool results use TOON format — a compact notation designed for LLMs. Read tabular rows as structured records with the headers defined at the top.
 
@@ -85,9 +87,15 @@ def should_continue(state: MessagesState) -> str:
 
 
 async def call_llm(state: MessagesState):
-    messages = [SYSTEM_PROMPT] + state["messages"][-8:]
+    today = date.today().isoformat()
+    dated_prompt = SystemMessage(
+        content=SYSTEM_PROMPT.content
+        + f"\n\n## Current Date\nToday is {today}. When the user says 'yesterday', 'today', 'this week' — resolve relative to this date."
+    )
+    messages = [dated_prompt] + state["messages"][-8:]
     response = await _llm_with_tools.ainvoke(messages)
     return {"messages": [response]}
+
 
 
 workflow = StateGraph(MessagesState)
