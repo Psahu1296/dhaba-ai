@@ -11,31 +11,47 @@ from tools.bill_app import (
     get_all_customer_ledgers,
     get_consumables_summary,
     get_all_dishes,
+    get_daily_summary,
+    get_earnings_range,
+    get_top_revenue_dishes,
+    get_customer_ledger_by_name,
 )
 from tools.retriever import search_dishes
 from tools.daily_embedder import search_daily_summaries
 from pipeline.state import PipelineState
 from tools.processors import (
-    filter_dishes, extract_period_revenue, extract_date_revenue,
-    find_peak_day, flag_expenses, rank_customers, add_date_label,
+    extract_period_revenue, extract_date_revenue,
+    find_peak_day, flag_expenses, add_date_label,
     detect_period,
 )
 
 
 _REGISTRY = {
-    "get_dashboard_kpis":       lambda a: get_dashboard_kpis(),
-    "get_top_dishes":           lambda a: get_top_dishes(a.get("limit", 5)),
-    "get_expenses":             lambda a: get_expenses(a.get("from_date"), a.get("to_date")),
-    "get_orders":               lambda a: get_orders(a.get("date"), a.get("status")),
-    "get_customer_balance":     lambda a: get_customer_balance(a["phone"]),
-    "get_todays_top_items":     lambda a: get_todays_top_items(a.get("limit", 10), a.get("date")),
-    "get_peak_hours_today":     lambda a: get_peak_hours_today(a.get("date")),
-    "get_earnings_history":     lambda a: get_earnings_history(a.get("period", "day"), a.get("num_periods", 7)),
-    "get_all_customer_ledgers": lambda a: get_all_customer_ledgers(a.get("status")),
-    "get_consumables_summary":  lambda a: get_consumables_summary(a.get("date")),
-    "get_all_dishes":           lambda a: get_all_dishes(),
-    "search_dishes":            lambda a: search_dishes(a["query"], a.get("n_results", 4)),
-    "search_daily_history":     lambda a: search_daily_summaries(a["query"], n_results=5),
+    "get_dashboard_kpis":          lambda a: get_dashboard_kpis(),
+    "get_top_dishes":              lambda a: get_top_dishes(a.get("limit", 5)),
+    "get_expenses":                lambda a: get_expenses(a.get("from_date"), a.get("to_date")),
+    "get_orders":                  lambda a: get_orders(a.get("date"), a.get("status")),
+    "get_customer_balance":        lambda a: get_customer_balance(a["phone"]),
+    "get_todays_top_items":        lambda a: get_todays_top_items(a.get("limit", 10), a.get("date")),
+    "get_peak_hours_today":        lambda a: get_peak_hours_today(a.get("date")),
+    "get_earnings_history":        lambda a: get_earnings_history(a.get("period", "day"), a.get("num_periods", 7)),
+    "get_all_customer_ledgers":    lambda a: get_all_customer_ledgers(a.get("status")),
+    "get_consumables_summary":     lambda a: get_consumables_summary(a.get("date")),
+    "get_all_dishes":              lambda a: get_all_dishes(
+                                       dish_type=a.get("dish_type"),
+                                       category=a.get("category"),
+                                       search=a.get("search"),
+                                       min_price=a.get("min_price"),
+                                       max_price=a.get("max_price"),
+                                   ),
+    "get_daily_summary":           lambda a: get_daily_summary(a["date"]),
+    "get_earnings_range":          lambda a: get_earnings_range(a["from_date"], a["to_date"]),
+    "get_top_revenue_dishes":      lambda a: get_top_revenue_dishes(
+                                       a.get("limit", 10), a.get("from_date"), a.get("to_date")
+                                   ),
+    "get_customer_ledger_by_name": lambda a: get_customer_ledger_by_name(a["name"]),
+    "search_dishes":               lambda a: search_dishes(a["query"], a.get("n_results", 4)),
+    "search_daily_history":        lambda a: search_daily_summaries(a["query"], n_results=5),
 }
 
 
@@ -59,32 +75,10 @@ def _post_process(state: PipelineState, results: dict) -> dict:
             if target:
                 results["get_earnings_history"] = extract_date_revenue(results["get_earnings_history"], target)
 
-    elif name == "menu" and "get_all_dishes" in results:
-        max_p = intent.get("max_price")
-        min_p = intent.get("min_price")
-        cat = intent.get("category_filter")
-        term = intent.get("search_term")
-        q = query.lower()
-        wants_cheapest  = any(s in q for s in ("cheapest", "most affordable", "sasta", "sabse sasta", "lowest price"))
-        wants_priciest  = any(s in q for s in ("most expensive", "costliest", "mehnga", "sabse mehnga", "highest price"))
-        sort_order = "desc" if wants_priciest else "asc"
-        # Apply filter/sort when user gave a constraint or asked for extreme price
-        if any([max_p, min_p, cat, term, wants_cheapest, wants_priciest]):
-            results["get_all_dishes"] = filter_dishes(
-                results["get_all_dishes"],
-                max_price=max_p, min_price=min_p,
-                category=cat, search_term=term,
-                sort_order=sort_order,
-            )
-
-    elif name == "historical_trend" and "get_earnings_history" in results:
-        # Only apply peak-day extraction for "which day / highest / best day" queries
+    elif name == "historical_trend" and "get_earnings_range" in results:
         _peak_signals = ("highest", "best day", "peak day", "which day", "konsa din", "most revenue")
         if any(s in query.lower() for s in _peak_signals):
-            results["get_earnings_history"] = find_peak_day(results["get_earnings_history"])
-
-    elif name == "customer_dues" and "get_all_customer_ledgers" in results:
-        results["get_all_customer_ledgers"] = rank_customers(results["get_all_customer_ledgers"])
+            results["get_earnings_range"] = find_peak_day(results["get_earnings_range"])
 
     elif name == "expenses" and "get_expenses" in results:
         results["get_expenses"] = flag_expenses(results["get_expenses"])

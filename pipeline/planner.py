@@ -68,10 +68,7 @@ def plan_workflow(state: PipelineState) -> dict:
 
     elif name == "past_report":
         steps = [
-            {"tool_name": "get_earnings_history",  "args": {"period": "day", "num_periods": 31}},
-            {"tool_name": "get_todays_top_items",  "args": {"date": single_date}},
-            {"tool_name": "get_peak_hours_today",  "args": {"date": single_date}},
-            {"tool_name": "get_expenses",          "args": {"from_date": single_date, "to_date": single_date}},
+            {"tool_name": "get_daily_summary", "args": {"date": single_date}},
         ]
 
     elif name == "revenue":
@@ -105,7 +102,13 @@ def plan_workflow(state: PipelineState) -> dict:
         steps = [{"tool_name": "get_orders", "args": {"date": single_date}}]
 
     elif name == "menu":
-        steps = [{"tool_name": "get_all_dishes", "args": {}}]
+        cat   = intent.get("category_filter", "")
+        steps = [{"tool_name": "get_all_dishes", "args": {
+            "dish_type": cat if cat in ("veg", "non-veg") else None,
+            "search":    intent.get("search_term"),
+            "min_price": intent.get("min_price"),
+            "max_price": intent.get("max_price"),
+        }}]
 
     elif name == "consumables":
         steps = [{"tool_name": "get_consumables_summary", "args": {"date": single_date}}]
@@ -113,7 +116,7 @@ def plan_workflow(state: PipelineState) -> dict:
     elif name == "historical_trend":
         steps = [
             {"tool_name": "search_daily_history", "args": {"query": query}},
-            {"tool_name": "get_earnings_history",  "args": {"period": "day", "num_periods": 30}},
+            {"tool_name": "get_earnings_range",    "args": {"from_date": from_date, "to_date": to_date}},
         ]
 
     # "general" → empty steps, synthesizer handles without any tool data

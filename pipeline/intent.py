@@ -2,7 +2,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from pydantic import BaseModel, Field
 from typing import Literal, Optional
-from config import OPENAI_API_KEY, OPENAI_BASE_URL, LLM_MODEL
+from config import OPENAI_API_KEY, OPENAI_BASE_URL, LLM_MODEL, _is_ollama
 from pipeline.state import PipelineState, IntentResult
 
 INTENT_TYPES = Literal[
@@ -85,12 +85,15 @@ Respond ONLY with valid JSON in this exact shape:
 }"""
 
 
-_llm = ChatOpenAI(
+_base = ChatOpenAI(
     base_url=OPENAI_BASE_URL,
     api_key=OPENAI_API_KEY,
     model=LLM_MODEL,
     temperature=0,
-).with_structured_output(_Schema, method="json_mode")
+)
+_llm = (_base.bind(extra_body={"think": False}) if _is_ollama else _base).with_structured_output(
+    _Schema, method="json_mode"
+)
 
 
 async def classify_intent(state: PipelineState) -> dict:

@@ -15,6 +15,10 @@ from tools.bill_app import (
     get_all_customer_ledgers as _all_ledgers,
     get_consumables_summary as _consumables_summary,
     get_all_dishes as _all_dishes,
+    get_daily_summary as _daily_summary,
+    get_earnings_range as _earnings_range,
+    get_top_revenue_dishes as _top_revenue_dishes,
+    get_customer_ledger_by_name as _ledger_by_name,
 )
 from tools.retriever import search_dishes as _search
 from tools.daily_embedder import search_daily_summaries as _search_daily
@@ -164,39 +168,56 @@ async def get_consumables_summary(date: str = None) -> str:
 
 
 @tool
-async def get_all_dishes(dish_type: str = None, max_price: float = None) -> str:
-    """Full dish menu, optionally filtered by type or price.
-    dish_type: 'veg' or 'non-veg'. max_price: max price in ₹.
+async def get_all_dishes(
+    dish_type: str = None,
+    category: str = None,
+    search: str = None,
+    min_price: float = None,
+    max_price: float = None,
+) -> str:
+    """Full dish menu with optional server-side filtering.
+    dish_type: 'veg' or 'non-veg'. category: 'roti', 'drinks', 'snacks', 'rice', 'sabji', 'other'.
+    search: dish name keyword. min_price / max_price: price range in ₹.
     NOT for finding a specific dish by name/ingredient — use search_dishes for that."""
-    import json as _json
-    dishes = await _all_dishes()
-
-    if dish_type:
-        dishes = [d for d in dishes if d.get("type", "").lower() == dish_type.lower()]
-
-    if max_price is not None:
-        def _parse_variants(dish):
-            v = dish.get("variants", [])
-            if isinstance(v, str):
-                try:
-                    v = _json.loads(v)
-                except Exception:
-                    return []
-            return v if isinstance(v, list) else []
-
-        def _under_price(dish):
-            for v in _parse_variants(dish):
-                try:
-                    price = float(str(v.get("price", 9999)).replace("₹", "").replace(",", "").strip())
-                    if price <= max_price:
-                        return True
-                except (ValueError, TypeError):
-                    pass
-            return False
-
-        dishes = [d for d in dishes if _under_price(d)]
-
+    dishes = await _all_dishes(dish_type=dish_type, category=category,
+                               search=search, min_price=min_price, max_price=max_price)
     return codec.encode_tool_result("get_all_dishes", dishes)
+
+
+@tool
+async def get_daily_summary(date: str) -> str:
+    """Full business picture for one specific past date — revenue, orders, payment split,
+    top items, peak hour, expenses, consumables. All in one call.
+    date: YYYY-MM-DD. Use resolve_date first for relative terms like 'kal', 'yesterday'."""
+    result = await _daily_summary(date)
+    return codec.encode_tool_result("get_daily_summary", result)
+
+
+@tool
+async def get_earnings_range(from_date: str, to_date: str) -> str:
+    """Revenue per day for an arbitrary date range. Returns [{date, revenue}] array.
+    Use for trend queries, monthly totals, or finding best/worst day in a period.
+    from_date, to_date: YYYY-MM-DD. Use resolve_date first for relative terms."""
+    result = await _earnings_range(from_date, to_date)
+    return codec.encode_tool_result("get_earnings_range", result)
+
+
+@tool
+async def get_top_revenue_dishes(limit: int = 10, from_date: str = None, to_date: str = None) -> str:
+    """Top dishes ranked by total revenue earned (quantity × price) — NOT by order count.
+    Answers 'which dish makes the most money?' — different from get_top_dishes (by volume).
+    limit: max results. from_date / to_date: optional date range (YYYY-MM-DD)."""
+    result = await _top_revenue_dishes(limit, from_date, to_date)
+    return codec.encode_tool_result("get_top_revenue_dishes", result)
+
+
+@tool
+async def get_customer_ledger_by_name(name: str) -> str:
+    """Find a customer's outstanding balance by name (not phone number).
+    Use when the user says a customer name without providing a phone number.
+    name: partial or full customer name — case-insensitive search."""
+    result = await _ledger_by_name(name)
+    return codec.encode_tool_result("get_customer_ledger_by_name", result)
 
 
 @tool
@@ -211,15 +232,19 @@ def search_daily_history(query: str) -> str:
 ALL_TOOLS = [
     resolve_date,
     get_dashboard_kpis,
+    get_daily_summary,
     get_todays_top_items,
     get_peak_hours_today,
     get_earnings_history,
+    get_earnings_range,
     get_expenses,
     get_orders,
     get_top_dishes,
+    get_top_revenue_dishes,
     get_all_dishes,
     search_dishes,
     get_customer_balance,
+    get_customer_ledger_by_name,
     get_all_customer_ledgers,
     get_consumables_summary,
     search_daily_history,

@@ -2,10 +2,33 @@ import httpx
 import logging
 from config import BILL_APP_URL, BILL_APP_EMAIL, BILL_APP_PASSWORD
 
-from datetime import date as _date
+from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
 import json as _json
 import asyncio
 import os
+
+_IST_OFFSET = _timedelta(hours=5, minutes=30)
+
+
+def _utc_to_ist_hour(ts: str) -> int | None:
+    """Parse a UTC ISO timestamp and return the IST hour (0-23)."""
+    try:
+        dt = _datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return (dt + _IST_OFFSET).hour
+    except Exception:
+        return None
+
+
+def _utc_to_ist_str(ts: str) -> str:
+    """Convert UTC ISO timestamp to a readable IST string like '10:32 AM'."""
+    try:
+        dt = _datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        ist = dt + _IST_OFFSET
+        hour = ist.hour % 12 or 12
+        ampm = "AM" if ist.hour < 12 else "PM"
+        return f"{hour}:{ist.minute:02d} {ampm} IST"
+    except Exception:
+        return ts
 
 logger = logging.getLogger(__name__)
 
@@ -90,35 +113,35 @@ async def get_orders(date: str = None, status: str = None) -> dict:
     if status:
         params["orderStatus"] = status
     response = await _request("GET", "/api/order", params=params)
-    return response.json()
+    data = response.json()
+    # Add IST time to every order so LLM never has to guess timezone
+    orders = data if isinstance(data, list) else data.get("data", data.get("orders", []))
+    for order in orders:
+        ts = order.get("createdAt", "")
+        if ts:
+            order["time_ist"] = _utc_to_ist_str(ts)
+    return data
 
 
 async def get_expenses(from_date: str = None, to_date: str = None) -> dict:
-    # Bill-App API ignores date params — fetch all, filter in Python
-    response = await _request("GET", "/api/expenses")
+    params = {}
+    if from_date: params["from"] = from_date
+    if to_date:   params["to"]   = to_date
+    response = await _request("GET", "/api/expenses", params=params)
     all_expenses = response.json().get("data", [])
-
-    filtered = []
-    for e in all_expenses:
-        expense_date = (e.get("expenseDate") or "")[:10]
-        if from_date and expense_date < from_date:
-            continue
-        if to_date and expense_date > to_date:
-            continue
-        filtered.append({
-            "name": e.get("name"),
-            "type": e.get("type"),
-            "amount_rupees": e.get("amount", 0),
-            "date": expense_date,
-        })
-
+    filtered = [{
+        "name":          e.get("name"),
+        "type":          e.get("type"),
+        "amount_rupees": e.get("amount", 0),
+        "date":          (e.get("expenseDate") or "")[:10],
+    } for e in all_expenses]
     total = sum(e["amount_rupees"] for e in filtered)
     return {
-        "expenses": filtered,
+        "expenses":     filtered,
         "total_rupees": total,
-        "count": len(filtered),
-        "from": from_date,
-        "to": to_date,
+        "count":        len(filtered),
+        "from":         from_date,
+        "to":           to_date,
         "note": "No expenses recorded for this period — ₹0 is valid, not an error." if not filtered else None,
     }
 
@@ -133,10 +156,21 @@ async def get_revenue(period: str = "day") -> dict:
     return response.json()
 
 
-async def get_all_dishes() -> list:
-    response = await _request("GET", "/api/dishes")
-    data = response.json()
-    return data.get("data", [])
+async def get_all_dishes(
+    dish_type: str = None,
+    category: str = None,
+    search: str = None,
+    min_price: float = None,
+    max_price: float = None,
+) -> list:
+    params = {}
+    if dish_type:  params["type"]     = dish_type
+    if category:   params["category"] = category
+    if search:     params["search"]   = search
+    if min_price:  params["minPrice"] = min_price
+    if max_price:  params["maxPrice"] = max_price
+    response = await _request("GET", "/api/dishes", params=params)
+    return response.json().get("data", [])
 
 
 
@@ -156,7 +190,17 @@ async def get_todays_top_items(limit: int = 10, date: str = None) -> dict:
             counts[name] = counts.get(name, 0) + qty
 
     ranked = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-    return {"date": target, "top_items": [{"name": n, "quantity": q} for n, q in ranked[:limit]]}
+
+    # First order time in IST (orders come back newest-first from API; sort by createdAt)
+    sorted_orders = sorted(orders, key=lambda o: o.get("createdAt", ""))
+    first_order_time = sorted_orders[0].get("time_ist", "") if sorted_orders else ""
+
+    return {
+        "date": target,
+        "top_items": [{"name": n, "quantity": q} for n, q in ranked[:limit]],
+        "total_orders": len(orders),
+        "first_order_time_ist": first_order_time,
+    }
 
 
 async def get_peak_hours_today(date: str = None) -> dict:
@@ -167,21 +211,23 @@ async def get_peak_hours_today(date: str = None) -> dict:
     hour_counts = {}
     for order in orders:
         ts = order.get("createdAt") or order.get("created_at") or order.get("time") or ""
-        try:
-            hour = int(ts.split("T")[1][:2]) if "T" in ts else int(ts.split(":")[0][-2:])
+        hour = _utc_to_ist_hour(ts)
+        if hour is not None:
             hour_counts[hour] = hour_counts.get(hour, 0) + 1
-        except (ValueError, IndexError, TypeError):
-            continue
 
     if not hour_counts:
         return {"date": target, "message": "No timing data available"}
 
     peak = max(hour_counts, key=hour_counts.get)
+    peak_end = (peak + 1) % 24
     return {
         "date": target,
-        "peak_hour": f"{peak:02d}:00 – {(peak + 1) % 24:02d}:00",
+        "peak_hour_ist": f"{peak % 12 or 12}:00 {'AM' if peak < 12 else 'PM'} – {peak_end % 12 or 12}:00 {'AM' if peak_end < 12 else 'PM'} IST",
         "peak_order_count": hour_counts[peak],
-        "all_hours": {f"{h:02d}:00": c for h, c in sorted(hour_counts.items())}
+        "all_hours_ist": {
+            f"{h % 12 or 12}:00 {'AM' if h < 12 else 'PM'}": c
+            for h, c in sorted(hour_counts.items())
+        },
     }
 
 
@@ -191,27 +237,18 @@ async def get_earnings_history(period: str = "day", num_periods: int = 7) -> dic
 
 
 async def get_all_customer_ledgers(status: str = None) -> dict:
-    response = await _request("GET", "/api/ledger/all")
+    response = await _request("GET", "/api/ledger/all", params={"hasBalance": "true"})
     customers = response.json().get("data", [])
-
-    # Strip transactions[] — it bloats the payload and the LLM doesn't need it
-    # Only return customers with outstanding balance, sorted highest first
-    with_dues = [
-        {
-            "name": c.get("customerName"),
-            "phone": c.get("customerPhone"),
-            "balance_due_rupees": c.get("balanceDue", 0),
-            "last_activity": (c.get("lastActivity") or "")[:10],
-        }
-        for c in customers
-        if c.get("balanceDue", 0) > 0
-    ]
-    with_dues.sort(key=lambda x: x["balance_due_rupees"], reverse=True)
-
+    with_dues = [{
+        "name":              c.get("customerName"),
+        "phone":             c.get("customerPhone"),
+        "balance_due_rupees": c.get("balanceDue", 0),
+        "last_activity":     (c.get("lastActivity") or "")[:10],
+    } for c in customers]
     return {
-        "customers_with_dues": with_dues,
+        "customers_with_dues":      with_dues,
         "total_outstanding_rupees": sum(c["balance_due_rupees"] for c in with_dues),
-        "count": len(with_dues),
+        "count":                    len(with_dues),
     }
 
 
@@ -221,3 +258,43 @@ async def get_consumables_summary(date: str = None) -> dict:
         params["date"] = date
     response = await _request("GET", "/api/consumables/summary/day", params=params)
     return response.json()
+
+
+async def get_daily_summary(date: str) -> dict:
+    response = await _request("GET", f"/api/daily-summary/{date}")
+    return response.json().get("data", {})
+
+
+async def get_daily_summary_range(from_date: str, to_date: str) -> list:
+    response = await _request("GET", "/api/daily-summary/range",
+                              params={"from": from_date, "to": to_date})
+    return response.json().get("data", [])
+
+
+async def get_earnings_range(from_date: str, to_date: str) -> list:
+    response = await _request("GET", "/api/earnings/range",
+                              params={"from": from_date, "to": to_date})
+    return response.json().get("data", [])
+
+
+async def get_top_revenue_dishes(limit: int = 10, from_date: str = None, to_date: str = None) -> list:
+    params: dict = {"limit": limit}
+    if from_date: params["from"] = from_date
+    if to_date:   params["to"]   = to_date
+    response = await _request("GET", "/api/dishes/top-revenue", params=params)
+    return response.json().get("data", [])
+
+
+async def get_customer_ledger_by_name(name: str) -> dict:
+    response = await _request("GET", "/api/ledger/all",
+                              params={"search": name, "hasBalance": "true"})
+    customers = response.json().get("data", [])
+    return {
+        "matches": [{
+            "name":               c.get("customerName"),
+            "phone":              c.get("customerPhone"),
+            "balance_due_rupees": c.get("balanceDue", 0),
+            "last_activity":      (c.get("lastActivity") or "")[:10],
+        } for c in customers],
+        "count": len(customers),
+    }

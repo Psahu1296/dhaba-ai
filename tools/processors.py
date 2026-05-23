@@ -1,35 +1,5 @@
-import json as _json
 from datetime import date as _date, timedelta
 from typing import Optional
-
-
-# ─── private helpers ────────────────────────────────────────────────────────
-
-def _parse_variants(raw) -> list[dict]:
-    if isinstance(raw, str):
-        try:
-            return _json.loads(raw)
-        except Exception:
-            return []
-    return raw if isinstance(raw, list) else []
-
-
-# Bill-App dish category values (the food-type grouping)
-_DISH_CATEGORIES = {"roti", "drinks", "snacks", "rice", "sabji", "other"}
-
-# Synonyms for search terms → Bill-App category names
-_SEARCH_SYNONYMS: dict[str, str] = {
-    "beverage":   "drinks",
-    "beverages":  "drinks",
-    "drink":      "drinks",
-    "bread":      "roti",
-    "chapati":    "roti",
-    "dal":        "sabji",
-    "curry":      "sabji",
-    "vegetable":  "sabji",
-    "vegetables": "sabji",
-    "sabzi":      "sabji",
-}
 
 
 def _date_label(d: _date) -> str:
@@ -92,87 +62,6 @@ def detect_period(date_hint: Optional[str], query: str) -> str:
         return "week"
     return "today"
 
-
-def filter_dishes(
-    dishes: list,
-    max_price: Optional[float] = None,
-    min_price: Optional[float] = None,
-    category: Optional[str] = None,
-    search_term: Optional[str] = None,
-    sort_order: str = "asc",   # "asc" = cheapest first, "desc" = most expensive first
-) -> dict:
-    """
-    Filter dish list by price / category / name. Returns LLM-ready structure.
-    All filtering is Python — LLM only narrates the result.
-    """
-    matches = []
-    cat_norm = (category or "").lower().strip()
-
-    for dish in dishes:
-        name = dish.get("name", "")
-        # `type` = dietary (veg/non-veg). `category` = food group (roti/drinks/snacks/rice/sabji/other)
-        dietary_type = (dish.get("type") or "").lower().strip()
-        dish_group = (dish.get("category") or "").lower().strip()
-        variants = _parse_variants(dish.get("variants", []))
-
-        # Dietary filter — uses the `type` field, not `category`
-        if cat_norm:
-            if cat_norm == "veg" and dietary_type != "veg":
-                continue
-            if cat_norm in ("non-veg", "nonveg", "non veg") and dietary_type != "non-veg":
-                continue
-
-        # search_term: resolve synonyms, then match against category or dish name
-        if search_term:
-            term = _SEARCH_SYNONYMS.get(search_term.lower(), search_term.lower())
-            if term in _DISH_CATEGORIES:
-                if dish_group != term:
-                    continue
-            else:
-                if term not in name.lower():
-                    continue
-
-        # Price filter — keep only variants in range
-        qualifying = [
-            {"size": v.get("size", v.get("name", "")), "price": v.get("price", 0)}
-            for v in variants
-            if (max_price is None or v.get("price", 0) <= max_price)
-            and (min_price is None or v.get("price", 0) >= min_price)
-        ]
-        if (max_price is not None or min_price is not None) and not qualifying:
-            continue
-
-        displayed = qualifying if qualifying else [
-            {"size": v.get("size", v.get("name", "")), "price": v.get("price", 0)} for v in variants
-        ]
-        prices = [p["price"] for p in displayed]
-        sort_price = max(prices) if sort_order == "desc" else min(prices)
-        matches.append({
-            "name": name,
-            "type": dietary_type,
-            "category": dish_group,
-            "price": sort_price,
-            "variants": displayed,
-        })
-
-    matches.sort(key=lambda x: x["price"], reverse=(sort_order == "desc"))
-
-    filters = []
-    if cat_norm:
-        filters.append(cat_norm)
-    if max_price is not None:
-        filters.append(f"under ₹{int(max_price)}")
-    if min_price is not None:
-        filters.append(f"above ₹{int(min_price)}")
-    if search_term:
-        filters.append(f'name contains "{search_term}"')
-
-    return {
-        "filter_applied": " + ".join(filters) if filters else "all dishes",
-        "count": len(matches),
-        "dishes": matches,
-        "empty_note": f"No dishes match: {', '.join(filters)}" if not matches else None,
-    }
 
 
 def extract_period_revenue(kpis: dict, period: str) -> dict:
@@ -288,21 +177,6 @@ def flag_expenses(expenses_data: dict) -> dict:
         result["high_warning"] = f"₹{total:,.0f} exceeds the normal ₹2,000/day threshold"
     return result
 
-
-def rank_customers(ledger_data: dict, top_n: Optional[int] = None) -> dict:
-    """
-    Highlight the top debtor explicitly. Data is already sorted by bill_app.py.
-    LLM gets a named top_debtor field — no need to scan the list.
-    """
-    customers = ledger_data.get("customers_with_dues", [])
-    result = {**ledger_data}
-    if customers:
-        result["top_debtor"] = customers[0]
-        result["high_balance_warning"] = any(c["balance_due_rupees"] > 5000 for c in customers)
-    if top_n:
-        result["customers_with_dues"] = customers[:top_n]
-        result["note"] = f"Showing top {top_n} of {len(customers)} customers with dues"
-    return result
 
 
 def add_date_label(data: dict, date_str: str) -> dict:

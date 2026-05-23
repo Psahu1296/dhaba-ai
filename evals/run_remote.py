@@ -14,7 +14,7 @@ RESULTS_FILE = os.path.join(os.path.dirname(__file__), "results.json")
 async def ask(client: httpx.AsyncClient, question: str, q_id: int) -> str:
     response = await client.post(
         "/agent/chat",
-        json={"message": question},
+        json={"message": question, "session_id": f"eval-remote-{q_id}"},
         headers={"X-API-Key": API_KEY},
         timeout=60.0,
     )
@@ -37,8 +37,9 @@ async def run_evals():
             print(f"✗ Cannot reach API: {e}")
             sys.exit(1)
 
+        total = len(questions)
         for q in questions:
-            print(f"[{q['id']:2}/40] {q['question']}")
+            print(f"[{q['id']:02d}/{total}] {q['question']}")
             try:
                 answer = await ask(client, q["question"], q["id"])
                 status = "ok"
@@ -62,7 +63,7 @@ async def run_evals():
     ok = sum(1 for r in results if r["status"] == "ok")
     empty = sum(1 for r in results if r.get("answer", "").strip() == "")
     errors = sum(1 for r in results if r["status"] == "error")
-    print(f"✓ Done. {ok}/40 answered | {empty} empty | {errors} errors")
+    print(f"✓ Done. {ok}/{len(results)} answered | {empty} empty | {errors} errors")
     print(f"Results saved to evals/results.json")
 
 
