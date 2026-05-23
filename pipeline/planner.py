@@ -1,8 +1,7 @@
-# stage 3
-
 from datetime import date, timedelta
 import re
 from pipeline.state import PipelineState, ExecutionPlan, ToolStep, IntentResult
+from tools.processors import detect_period
 
 
 def _resolve_date(hint: str | None) -> dict:
@@ -76,11 +75,13 @@ def plan_workflow(state: PipelineState) -> dict:
         ]
 
     elif name == "revenue":
-        # today/week/month → live KPI dashboard; past date → history
-        if hint and hint.lower() not in ("aaj", "today", "abhi"):
-            steps = [{"tool_name": "get_earnings_history", "args": {"period": "day", "num_periods": 31}}]
+        period = intent.get("period") or detect_period(hint, query)
+        if period in ("today", "week", "month", "year"):
+            # KPI dashboard has all four pre-computed — no array scanning needed
+            steps = [{"tool_name": "get_dashboard_kpis", "args": {"_period": period}}]
         else:
-            steps = [{"tool_name": "get_dashboard_kpis", "args": {}}]
+            # specific past date (e.g. "yesterday", "3 days ago") → history
+            steps = [{"tool_name": "get_earnings_history", "args": {"period": "day", "num_periods": 31}}]
 
     elif name == "expenses":
         steps = [{"tool_name": "get_expenses", "args": {"from_date": from_date, "to_date": to_date}}]

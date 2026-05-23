@@ -28,6 +28,11 @@ class _Schema(BaseModel):
     date_hint: Optional[str] = Field(None, description="Relative time phrase from user e.g. 'kal', 'last week'")
     phone: Optional[str] = Field(None, description="Phone number if user is asking about a specific customer")
     confidence: float = Field(..., ge=0.0, le=1.0)
+    max_price: Optional[float] = Field(None, description="Max price in ₹ e.g. 50 from 'under ₹50' — menu intent only")
+    min_price: Optional[float] = Field(None, description="Min price in ₹ e.g. 100 from 'above ₹100' — menu intent only")
+    category_filter: Optional[str] = Field(None, description="'veg', 'non-veg', or 'egg' — menu intent only")
+    search_term: Optional[str] = Field(None, description="Specific dish name searched e.g. 'biryani' — menu intent only")
+    period: Optional[str] = Field(None, description="'today', 'week', 'month', or 'year' — revenue intent only")
 
 
 _PROMPT = """You are an intent classifier for a dhaba (Indian restaurant) business assistant.
@@ -57,13 +62,23 @@ Also extract:
 - date_hint: any time reference ("kal", "yesterday", "last week") — null if none
 - phone: phone number if asking about specific customer — null otherwise
 - confidence: how sure you are (0.0–1.0)
+- max_price: max price in ₹ if user says "under ₹X" or "less than ₹X" — number only, null otherwise
+- min_price: min price in ₹ if user says "above ₹X" or "more than ₹X" — number only, null otherwise
+- category_filter: "veg", "non-veg", or "egg" if user filters by category — null otherwise
+- search_term: specific dish/item name being searched (e.g. "biryani", "chicken") — null otherwise
+- period: "today", "week", "month", or "year" for revenue queries — null otherwise
 
 Respond ONLY with valid JSON in this exact shape:
 {
   "intent": "<one of the intent values above>",
   "date_hint": "<time phrase or null>",
   "phone": "<phone number or null>",
-  "confidence": <0.0 to 1.0>
+  "confidence": <0.0 to 1.0>,
+  "max_price": <number or null>,
+  "min_price": <number or null>,
+  "category_filter": "<veg|non-veg|egg or null>",
+  "search_term": "<dish name or null>",
+  "period": "<today|week|month|year or null>"
 }"""
 
 
@@ -81,9 +96,14 @@ async def classify_intent(state: PipelineState) -> dict:
         HumanMessage(content=state["query"]),
     ])
     intent: IntentResult = {
-        "intent": result.intent,
-        "date_hint": result.date_hint,
-        "phone": result.phone,
-        "confidence": result.confidence,
+        "intent":          result.intent,
+        "date_hint":       result.date_hint,
+        "phone":           result.phone,
+        "confidence":      result.confidence,
+        "max_price":       result.max_price,
+        "min_price":       result.min_price,
+        "category_filter": result.category_filter,
+        "search_term":     result.search_term,
+        "period":          result.period,
     }
     return {"intent": intent}

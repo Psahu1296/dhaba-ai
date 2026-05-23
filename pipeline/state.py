@@ -2,10 +2,15 @@ from typing import TypedDict, Optional
 
 
 class IntentResult(TypedDict):
-    intent: str          # one of the INTENT_TYPES
-    date_hint: Optional[str]   # "kal", "yesterday", "last week" — null if none
-    phone: Optional[str]       # for customer_balance intent only
-    confidence: float    # 0.0 – 1.0
+    intent: str
+    date_hint: Optional[str]
+    phone: Optional[str]
+    confidence: float
+    max_price: Optional[float]       # menu: "under ₹50" → 50.0
+    min_price: Optional[float]       # menu: "above ₹100" → 100.0
+    category_filter: Optional[str]   # menu: "veg" | "non-veg" | "egg"
+    search_term: Optional[str]       # menu: "biryani"
+    period: Optional[str]            # revenue: "today" | "week" | "month" | "year"
 
 
 class ToolStep(TypedDict):
