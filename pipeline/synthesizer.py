@@ -1,6 +1,6 @@
 import json
 import httpx
-from config import OPENAI_BASE_URL, LLM_MODEL
+from config import OPENAI_BASE_URL, OPENAI_API_KEY, LLM_MODEL, _is_ollama
 
 _OLLAMA_URL = OPENAI_BASE_URL.replace("/v1", "") + "/api/chat"
 
@@ -40,25 +40,27 @@ Location: Kendudhar, Saraiapali, Mahasamund, Chhattisgarh.
 NEVER invent or estimate numbers. Only use what is in the data block provided."""
 
 
-async def synthesize(messages: list[dict]) -> str:
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        r = await client.post(
-            _OLLAMA_URL,
-            json={"model": LLM_MODEL, "messages": messages, "think": False, "stream": False},
-        )
-        return r.json()["message"]["content"]
-
-
 async def synthesize_stream(messages: list[dict]):
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        async with client.stream(
-            "POST",
-            _OLLAMA_URL,
-            json={"model": LLM_MODEL, "messages": messages, "think": False, "stream": True},
-        ) as r:
-            async for line in r.aiter_lines():
-                if line:
-                    data = json.loads(line)
-                    token = data.get("message", {}).get("content", "")
-                    if token:
-                        yield token
+    if _is_ollama:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream(
+                "POST",
+                _OLLAMA_URL,
+                json={"model": LLM_MODEL, "messages": messages, "think": False, "stream": True},
+            ) as r:
+                async for line in r.aiter_lines():
+                    if line:
+                        data = json.loads(line)
+                        token = data.get("message", {}).get("content", "")
+                        if token:
+                            yield token
+    else:
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
+        stream = await client.chat.completions.create(
+            model=LLM_MODEL, messages=messages, temperature=0.3, stream=True,
+        )
+        async for chunk in stream:
+            token = (chunk.choices[0].delta.content or "") if chunk.choices else ""
+            if token:
+                yield token
