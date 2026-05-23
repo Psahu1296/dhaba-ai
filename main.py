@@ -20,6 +20,7 @@ from tools.embedder import embed_menu
 from tools import codec
 from agent import run_agent, run_agent_stream
 from graph import run_graph, run_graph_stream, init_graph
+from pipeline.graph import init_pipeline, run_pipeline, run_pipeline_stream
 from db import init_db
 from reports import generate_daily_report
 
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     await init_db(DATABASE_URL)
     await init_graph(DATABASE_URL)
+    await init_pipeline(DATABASE_URL)
     async def _bg_startup():
         try:
             await bill_app_login()
@@ -186,7 +188,7 @@ async def chat_stream_endpoint(req: ChatRequest):
 @app.post("/agent/chat")
 async def agent_chat(req: ChatRequest, user: dict = Depends(get_current_user)):
     thread_id = req.session_id or str(uuid.uuid4())
-    answer = await run_graph(req.message, thread_id, role=user["role"])
+    answer = await run_pipeline(req.message, thread_id, role=user["role"])
     return {"answer": answer, "session_id": thread_id, "toon_chars_saved": codec.total_chars_saved()}
 
 
@@ -194,7 +196,7 @@ async def agent_chat(req: ChatRequest, user: dict = Depends(get_current_user)):
 async def agent_chat_stream(req: ChatRequest, user: dict = Depends(get_current_user)):
     thread_id = req.session_id or str(uuid.uuid4())
     async def generate():
-        async for token in run_graph_stream(req.message, thread_id, role=user["role"]):
+        async for token in run_pipeline_stream(req.message, thread_id, role=user["role"]):
             yield token
     return StreamingResponse(generate(), media_type="text/plain")
 

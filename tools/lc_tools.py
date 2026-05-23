@@ -22,14 +22,10 @@ from tools.daily_embedder import search_daily_summaries as _search_daily
 
 @tool
 def resolve_date(relative: str) -> str:
-    """Convert any relative date/time expression into concrete YYYY-MM-DD dates.
-    Call this FIRST whenever the user uses relative time — before calling any data tool.
-    Triggers: kal, aaj, yesterday, today, last week, this month, pichle hafte, is mahine,
-              parso, 2 din pehle, 3 days ago, last Monday, this week, pichle mahine, etc.
-    Returns: {"date": "YYYY-MM-DD"} for a single day,
-             {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} for a range.
-    relative: the time phrase from the user exactly (e.g. "kal", "last week", "2 days ago")
-    """
+    """Convert a relative time expression to concrete YYYY-MM-DD dates.
+    Call before any data tool when the user uses relative time (kal, yesterday, last week, etc.).
+    Returns: {"date": "YYYY-MM-DD"} for a single day, {"from": ..., "to": ...} for a range.
+    relative: the exact time phrase from the user."""
     import json
     today = _date.today()
     rel = relative.lower().strip()
@@ -72,10 +68,8 @@ def resolve_date(relative: str) -> str:
 
 @tool
 async def get_top_dishes(limit: int = 5) -> str:
-    """All-time cumulative bestsellers — dishes with the most orders since the dhaba opened.
-    Triggers: "sabse popular dish", "all time bestseller", "menu mein kya famous hai",
-              "most ordered dish ever", "top dishes overall", "famous dishes".
-    NOT for what sold today or on a specific date — use get_todays_top_items for that.
+    """All-time cumulative bestsellers since the dhaba opened.
+    NOT for what sold on a specific date — use get_todays_top_items for that.
     limit: how many top dishes to return (default 5)."""
     result = await _top_dishes(limit)
     return codec.encode_tool_result("get_top_dishes", result)
@@ -83,22 +77,16 @@ async def get_top_dishes(limit: int = 5) -> str:
 
 @tool
 async def get_dashboard_kpis() -> str:
-    """Live revenue snapshot for current periods: today, this week, this month, this year — each with % change vs previous period.
-    Triggers: "aaj kitna hua", "today ka revenue", "how much today", "weekly total", "monthly income",
-              "kitni kamai hui", "is hafte kitna", "is mahine ka", "yearly revenue", "kpis", "dashboard",
-              "how are we doing", "kaisa chal raha hai".
-    NOT for past dates or specific historical days — use get_earnings_history for that.
-    No parameters needed — always returns all periods together."""
+    """Live revenue snapshot: today, this week, this month, this year — each with % change vs previous period.
+    NOT for past dates or specific historical days — use get_earnings_history for that."""
     result = await _kpis()
     return codec.encode_tool_result("get_dashboard_kpis", result)
 
 
 @tool
 async def get_expenses(from_date: str = None, to_date: str = None) -> str:
-    """Expense records with pre-computed total for a date range.
-    Triggers: "aaj ka kharcha", "expenses today", "how much did we spend", "kal ke expenses",
-              "kharche dikhao", "cost today", "expenditure", "kitna kharch hua", "expenses this week".
-    from_date, to_date: YYYY-MM-DD. Use resolve_date first if the user said a relative term.
+    """Expense records with total for a date range.
+    from_date, to_date: YYYY-MM-DD. Use resolve_date first for relative terms.
     Omit both for all-time expenses."""
     result = await _expenses(from_date, to_date)
     return codec.encode_tool_result("get_expenses", result)
@@ -107,33 +95,23 @@ async def get_expenses(from_date: str = None, to_date: str = None) -> str:
 @tool
 async def get_orders(date: str = None, status: str = None) -> str:
     """Raw order list — individual orders with items, amounts, table, payment status.
-    Triggers: "aaj ke orders", "show me orders", "pending orders", "kal ke orders",
-              "orders for [date]", "completed orders", "kitne orders aaye", "order details",
-              "active order", "active orders right now", "current active orders",
-              "is there any active order", "koi active order hai", "abhi koi order hai",
-              "any order right now", "live orders", "ongoing orders".
-    date: YYYY-MM-DD. Use resolve_date first if the user said a relative term like "kal".
-    status: "Completed" or "Pending". Omit for all orders. For active/live orders use status="Pending"."""
+    date: YYYY-MM-DD. Use resolve_date first for relative terms.
+    status: "Completed" or "Pending". Omit for all orders."""
     result = await _orders(date, status)
     return codec.encode_tool_result("get_orders", result)
 
 
 @tool
 async def get_customer_balance(phone: str) -> str:
-    """Outstanding balance for one specific customer, looked up by phone number.
-    Triggers: "customer ka balance", "X ka kitna baki hai", "does [name] owe us",
-              "phone number X ka balance", "ek customer ka udhar".
-    phone: customer's phone number (required). If not provided, ask the user for it.
-    For ALL customers with dues — use get_all_customer_ledgers instead."""
+    """Outstanding balance for one specific customer by phone number.
+    phone: required. For ALL customers with dues — use get_all_customer_ledgers instead."""
     result = await _balance(phone)
     return codec.encode_tool_result("get_customer_balance", result)
 
 
 @tool
 async def search_dishes(query: str, n_results: int = 4) -> str:
-    """Semantic search for a dish by name, ingredient, or flavor description.
-    Triggers: "kya chicken dish hai", "egg items", "do we have biryani", "paneer menu",
-              "fish dishes", "koi sweet dish hai", "spicy non-veg", "find [dish name]".
+    """Semantic search for a dish by name, ingredient, or description.
     NOT for listing all veg/non-veg or filtering by price — use get_all_dishes for that.
     query: dish name, ingredient, or description in any language."""
     result = await _search(query, n_results)
@@ -142,11 +120,8 @@ async def search_dishes(query: str, n_results: int = 4) -> str:
 
 @tool
 async def get_todays_top_items(limit: int = 10, date: str = None) -> str:
-    """Top selling items by quantity on a specific date — what actually sold that day.
-    Triggers: "aaj kya bika", "top items today", "kal ke best sellers", "what sold most yesterday",
-              "sabse zyada kya gaya", "best selling today", "most ordered today",
-              "kal kya bikaa", "what moved most on [date]".
-    date: YYYY-MM-DD. Use resolve_date first if user said "kal", "yesterday", etc.
+    """Top selling items by quantity on a specific date.
+    date: YYYY-MM-DD. Use resolve_date first for relative terms.
     NOT for all-time bestsellers — use get_top_dishes for that."""
     result = await _todays_items(limit, date)
     return codec.encode_tool_result("get_todays_top_items", result)
@@ -155,37 +130,26 @@ async def get_todays_top_items(limit: int = 10, date: str = None) -> str:
 @tool
 async def get_peak_hours_today(date: str = None) -> str:
     """Peak ordering hours on a specific date — when was it busiest and order count per hour.
-    Triggers: "peak time today", "busiest hour", "rush hours", "kab zyada orders aaye",
-              "kal ka peak time", "most orders when", "kitne baje zyada bhaag tha",
-              "which hour was busiest", "peak hours yesterday".
-    date: YYYY-MM-DD. Use resolve_date first if user said "kal", "yesterday", etc."""
+    date: YYYY-MM-DD. Use resolve_date first for relative terms."""
     result = await _peak_hours(date)
     return codec.encode_tool_result("get_peak_hours_today", result)
 
 
 @tool
 async def get_earnings_history(period: str = "day", num_periods: int = 7) -> str:
-    """Revenue time series for past N periods — use to look up a specific past date's revenue or find trends.
-    Triggers: "kal ka revenue", "revenue on [date]", "best day this month", "worst week",
-              "pichle 7 din ka revenue", "compare days", "kaun sa din best tha",
-              "revenue trend", "how was revenue on [specific date]", "which day earned most".
+    """Revenue time series for past N periods — for historical dates or trend analysis.
     period: 'day' (default), 'week', 'month', 'year'.
-    num_periods: how many periods back. For a specific past date use period='day', num_periods=31.
-    NOT for current totals (today/week/month) — use get_dashboard_kpis for live totals."""
+    num_periods: how far back. For a specific past date use period='day', num_periods=31.
+    NOT for current totals (today/week/month) — use get_dashboard_kpis for those."""
     result = await _earnings_history(period, num_periods)
     return codec.encode_tool_result("get_earnings_history", result)
 
 
 @tool
 async def get_all_customer_ledgers(status: str = None) -> str:
-    """All customers with outstanding balances, sorted by amount owed (highest first), with grand total.
-    IMPORTANT: Call this whenever anyone asks about customer balances WITHOUT providing a phone number.
-    Triggers: "total outstanding", "who owes money", "who owes us the most", "who has due",
-              "customers with balance due", "customer dues list", "baaki list", "outstanding customers",
-              "sabse zyada baaki kiske paas", "udhar list", "all pending payments", "credit customers",
-              "kitna total udhar hai", "any due", "who has pending payment", "due customers",
-              "customers with dues", "who hasn't paid", "unpaid customers".
-    NEVER ask for a phone number for this — it returns all customers at once.
+    """All customers with outstanding balances, sorted by amount owed, with grand total.
+    Call when asked about customer dues WITHOUT a specific phone number.
+    NEVER ask for a phone number — this returns all customers at once.
     status: filter if needed. Omit for all customers with any balance."""
     result = await _all_ledgers(status)
     return codec.encode_tool_result("get_all_customer_ledgers", result)
@@ -193,11 +157,8 @@ async def get_all_customer_ledgers(status: str = None) -> str:
 
 @tool
 async def get_consumables_summary(date: str = None) -> str:
-    """Daily breakdown of chai, gutka, and cigarette usage — sold to customers, consumed by staff, wasted.
-    Triggers: "chai kitni biki", "gutka usage", "cigarette count today", "consumables today",
-              "staff ne chai kitni li", "kal ka gutka", "cigarette inventory", "pani puri count",
-              "chai aur gutka ka hisab", "consumable report".
-    date: YYYY-MM-DD. Use resolve_date first if user said "kal", "yesterday", etc."""
+    """Daily breakdown of chai, gutka, and cigarette usage — sold, consumed by staff, wasted.
+    date: YYYY-MM-DD. Use resolve_date first for relative terms."""
     result = await _consumables_summary(date)
     return codec.encode_tool_result("get_consumables_summary", result)
 
@@ -205,9 +166,6 @@ async def get_consumables_summary(date: str = None) -> str:
 @tool
 async def get_all_dishes(dish_type: str = None, max_price: float = None) -> str:
     """Full dish menu, optionally filtered by type or price.
-    Triggers: "veg dishes dikhao", "non-veg menu", "dishes under ₹100", "full menu kya hai",
-              "kya serve karte ho", "sabzi kya hai", "all items", "price list",
-              "cheap dishes", "affordable menu", "what do you serve".
     dish_type: 'veg' or 'non-veg'. max_price: max price in ₹.
     NOT for finding a specific dish by name/ingredient — use search_dishes for that."""
     import json as _json
@@ -243,11 +201,7 @@ async def get_all_dishes(dish_type: str = None, max_price: float = None) -> str:
 
 @tool
 def search_daily_history(query: str) -> str:
-    """Semantic search across embedded daily business summaries — finds pattern matches across weeks/months.
-    Triggers: "best day last month", "which Sunday was busiest", "slowest week ever",
-              "compare last 2 weeks", "worst performing day", "which month was best",
-              "kab sabse zyada business tha historically", "trend over last month".
-    Use when the user asks about patterns or comparisons spanning multiple weeks/months.
+    """Semantic search across embedded daily business summaries — for patterns spanning weeks/months.
     NOT for a specific date's data — use get_earnings_history or get_todays_top_items for that.
     query: describe what you're looking for in plain language."""
     results = _search_daily(query, n_results=5)
