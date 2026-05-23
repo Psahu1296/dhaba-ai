@@ -40,17 +40,22 @@ _PROMPT = """You are an intent classifier for a dhaba (Indian restaurant) busine
 Classify the user query into exactly one intent:
 
 daily_report    → wants full business report for TODAY
+                  ALSO: "dashboard KPIs", "show dashboard", "show me the KPIs", "KPIs", "dashboard"
 past_report     → wants full report for a PAST date
 revenue         → revenue / earnings / kitna hua / income
 expenses        → kharcha / spending / expenditure
-top_dishes      → all-time bestsellers / popular dishes overall
+top_dishes      → all-time bestsellers / popular dishes overall (NO specific date)
 todays_items    → what sold today OR on a specific date
+                  ALSO: "top items yesterday", "top selling 2 days ago", "kal kya bika" — whenever
+                  a date is involved, use todays_items (NOT top_dishes)
 peak_hours      → busiest hours / rush time / peak time
 customer_dues   → all customers with balances (no specific phone)
 customer_balance → ONE specific customer's balance (user gave phone/name)
 orders          → order list / order details
-menu            → dish menu / what's served / price list
+menu            → dish menu / what's served / price list / specific dish price
 consumables     → chai / gutka / cigarette usage
+                  ALSO: "drinks", "beverages", "peene ka", "chai serve karte ho" — anything about
+                  beverages or what to drink → consumables (chai is tracked there, not on menu)
 historical_trend → patterns / comparisons spanning weeks or months
 general         → out of scope / greeting / chitchat / unclear
                   OR a follow-up that refers to a previous answer and needs no new data

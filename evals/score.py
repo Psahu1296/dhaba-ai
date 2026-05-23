@@ -69,6 +69,16 @@ def run_scoring():
     with open("evals/results.json") as f:
         results = json.load(f)
 
+    # expected_topics in results.json may be stale — always use questions.json
+    questions_file = os.path.join(os.path.dirname(__file__), "questions.json")
+    if os.path.exists(questions_file):
+        with open(questions_file) as f:
+            questions = json.load(f)
+        topic_map = {q["id"]: q["expected_topics"] for q in questions}
+        for r in results:
+            if r["id"] in topic_map:
+                r["expected_topics"] = topic_map[r["id"]]
+
     scores = []
     print(f"{'ID':<4} {'Score':<7} {'Question':<45} Reason")
     print("-" * 100)

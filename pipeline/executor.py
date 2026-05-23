@@ -80,6 +80,36 @@ def _post_process(state: PipelineState, results: dict) -> dict:
         if any(s in query.lower() for s in _peak_signals):
             results["get_earnings_range"] = find_peak_day(results["get_earnings_range"])
 
+    elif name == "menu" and "get_all_dishes" in results:
+        _exp_signals = ("expensive", "costly", "mehenga", "mehnga", "sabse mehenga", "highest price", "most expensive")
+        _chp_signals = ("cheapest", "sasta", "sabse sasta", "lowest price", "cheapest dish", "least expensive")
+        dishes = results["get_all_dishes"]
+        if isinstance(dishes, list) and dishes:
+            if any(s in query.lower() for s in _exp_signals):
+                def _max_price(d):
+                    variants = d.get("variants") or []
+                    prices = [v.get("price", 0) for v in variants if isinstance(v, dict)]
+                    return max(prices) if prices else 0
+                top = max(dishes, key=_max_price)
+                results["get_all_dishes"] = {
+                    "most_expensive_dish": top.get("name"),
+                    "price": _max_price(top),
+                    "category": top.get("dish_type") or top.get("category"),
+                    "variants": top.get("variants", []),
+                }
+            elif any(s in query.lower() for s in _chp_signals):
+                def _min_price(d):
+                    variants = d.get("variants") or []
+                    prices = [v.get("price", 0) for v in variants if isinstance(v, dict) and v.get("price", 0) > 0]
+                    return min(prices) if prices else float("inf")
+                bottom = min(dishes, key=_min_price)
+                results["get_all_dishes"] = {
+                    "cheapest_dish": bottom.get("name"),
+                    "price": _min_price(bottom),
+                    "category": bottom.get("dish_type") or bottom.get("category"),
+                    "variants": bottom.get("variants", []),
+                }
+
     elif name == "expenses" and "get_expenses" in results:
         results["get_expenses"] = flag_expenses(results["get_expenses"])
 

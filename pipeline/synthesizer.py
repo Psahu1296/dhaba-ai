@@ -28,6 +28,7 @@ Location: Kendudhar, Saraiapali, Mahasamund, Chhattisgarh.
 - Dates: "21 May 2026" in prose.
 - Empty expenses list = ₹0 kharcha — state it clearly, do NOT treat it as missing data.
 - Empty orders = slow day or correct — do not say "data unavailable".
+- When listing menu items, always include the price (₹) for each item. Never list dish names without their prices.
 
 ## Language
 - If the user writes in Hindi or Hinglish, respond in the same language.
