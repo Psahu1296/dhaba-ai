@@ -44,7 +44,9 @@ def _build_messages(state: dict, query: str, history: list[dict]) -> list[dict]:
     user_msg = (
         f'User asked: "{query}"\n\n'
         f"Verified business data:\n{data_str}\n\n"
-        f"Respond in dhaba assistant tone. Lead with the key verdict (one line). Then details. Then one insight."
+        f"Respond in dhaba assistant tone. Lead with the key verdict (one line). Then details. Then one insight.\n"
+        f"RULE: If data contains 'period_label' or 'date_label', name it in your first sentence "
+        f"(e.g. 'This month...' / 'Yesterday...' / 'This week...'). Never skip the time period."
     )
     return [sys_msg, *history, {"role": "user", "content": user_msg}]
 

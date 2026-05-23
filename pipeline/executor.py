@@ -64,12 +64,17 @@ def _post_process(state: PipelineState, results: dict) -> dict:
         min_p = intent.get("min_price")
         cat = intent.get("category_filter")
         term = intent.get("search_term")
-        # Only transform when user specified a filter — raw list is fine otherwise
-        if any([max_p, min_p, cat, term]):
+        q = query.lower()
+        wants_cheapest  = any(s in q for s in ("cheapest", "most affordable", "sasta", "sabse sasta", "lowest price"))
+        wants_priciest  = any(s in q for s in ("most expensive", "costliest", "mehnga", "sabse mehnga", "highest price"))
+        sort_order = "desc" if wants_priciest else "asc"
+        # Apply filter/sort when user gave a constraint or asked for extreme price
+        if any([max_p, min_p, cat, term, wants_cheapest, wants_priciest]):
             results["get_all_dishes"] = filter_dishes(
                 results["get_all_dishes"],
                 max_price=max_p, min_price=min_p,
                 category=cat, search_term=term,
+                sort_order=sort_order,
             )
 
     elif name == "historical_trend" and "get_earnings_history" in results:

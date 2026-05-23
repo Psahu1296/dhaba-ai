@@ -85,6 +85,7 @@ def filter_dishes(
     min_price: Optional[float] = None,
     category: Optional[str] = None,
     search_term: Optional[str] = None,
+    sort_order: str = "asc",   # "asc" = cheapest first, "desc" = most expensive first
 ) -> dict:
     """
     Filter dish list by price / category / name. Returns LLM-ready structure.
@@ -132,15 +133,17 @@ def filter_dishes(
         displayed = qualifying if qualifying else [
             {"size": v.get("size", v.get("name", "")), "price": v.get("price", 0)} for v in variants
         ]
+        prices = [p["price"] for p in displayed]
+        sort_price = max(prices) if sort_order == "desc" else min(prices)
         matches.append({
             "name": name,
             "type": dietary_type,
             "category": dish_group,
-            "price": min(p["price"] for p in displayed),
+            "price": sort_price,
             "variants": displayed,
         })
 
-    matches.sort(key=lambda x: x["price"])
+    matches.sort(key=lambda x: x["price"], reverse=(sort_order == "desc"))
 
     filters = []
     if cat_norm:
