@@ -22,7 +22,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#050505] relative">
+    <div className="flex flex-col h-[100dvh] bg-[#050505] relative">
       {/* Ambient Orbs — isolated so they don't affect flex children */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-orange-600/10 rounded-full blur-[140px]" />
@@ -30,7 +30,7 @@ export default function App() {
       </div>
 
       {/* Header */}
-      <header className="px-4 sm:px-6 md:px-8 py-4 border-b border-white/5 bg-black/40 backdrop-blur-2xl shrink-0 shadow-sm flex justify-center w-full relative z-20">
+      <header className="px-4 sm:px-6 md:px-8 py-4 border-b border-white/5 bg-black/40 backdrop-blur-2xl shrink-0 shadow-sm flex justify-center w-full relative z-20" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
         <div className="w-full max-w-4xl flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0">
           <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
             <div className="flex items-center gap-4">
@@ -55,7 +55,7 @@ export default function App() {
             </button>
           </div>
 
-          <div className={`${isMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row items-stretch md:items-center justify-center md:justify-end gap-2 md:gap-3 w-full md:w-auto pt-4 md:pt-0 border-t border-white/5 md:border-none mt-4 md:mt-0`}>
+          <div className={`${isMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row items-stretch md:items-center justify-center md:justify-end gap-2 md:gap-3 w-full md:w-auto md:pt-0 md:mt-0 absolute md:static top-full left-0 right-0 bg-black/95 md:bg-transparent backdrop-blur-2xl md:backdrop-blur-none border-b border-white/10 md:border-none p-4 md:p-0 shadow-xl md:shadow-none z-50`}>
             <div className="flex w-full md:w-auto items-center gap-1 p-1 bg-black/40 rounded-[14px] border border-white/5 shadow-inner backdrop-blur-sm">
               {(['stream', 'agent'] as Mode[]).map(m => {
                 const isActive = mode === m
@@ -154,7 +154,7 @@ export default function App() {
       </div>
 
       {/* Input */}
-      <div className="shrink-0 relative z-10 flex justify-center w-full px-4 sm:px-6 md:px-8 pb-8">
+      <div className="shrink-0 relative z-10 flex justify-center w-full px-4 sm:px-6 md:px-8 pb-4 sm:pb-8" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
         <div className="w-full max-w-4xl">
           <InputBar
             onSend={sendMessage}
