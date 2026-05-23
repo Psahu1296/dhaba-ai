@@ -38,7 +38,7 @@ async def run_evals():
             sys.exit(1)
 
         for q in questions:
-            print(f"[{q['id']:2}/20] {q['question']}")
+            print(f"[{q['id']:2}/40] {q['question']}")
             try:
                 answer = await ask(client, q["question"], q["id"])
                 status = "ok"
@@ -62,7 +62,7 @@ async def run_evals():
     ok = sum(1 for r in results if r["status"] == "ok")
     empty = sum(1 for r in results if r.get("answer", "").strip() == "")
     errors = sum(1 for r in results if r["status"] == "error")
-    print(f"✓ Done. {ok}/20 answered | {empty} empty | {errors} errors")
+    print(f"✓ Done. {ok}/40 answered | {empty} empty | {errors} errors")
     print(f"Results saved to evals/results.json")
 
 

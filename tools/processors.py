@@ -17,6 +17,20 @@ def _parse_variants(raw) -> list[dict]:
 # Bill-App dish category values (the food-type grouping)
 _DISH_CATEGORIES = {"roti", "drinks", "snacks", "rice", "sabji", "other"}
 
+# Synonyms for search terms → Bill-App category names
+_SEARCH_SYNONYMS: dict[str, str] = {
+    "beverage":   "drinks",
+    "beverages":  "drinks",
+    "drink":      "drinks",
+    "bread":      "roti",
+    "chapati":    "roti",
+    "dal":        "sabji",
+    "curry":      "sabji",
+    "vegetable":  "sabji",
+    "vegetables": "sabji",
+    "sabzi":      "sabji",
+}
+
 
 def _date_label(d: _date) -> str:
     today = _date.today()
@@ -108,15 +122,13 @@ def filter_dishes(
             if cat_norm in ("non-veg", "nonveg", "non veg") and dietary_type != "non-veg":
                 continue
 
-        # search_term: match against dish name OR dish food-group category
+        # search_term: resolve synonyms, then match against category or dish name
         if search_term:
-            term = search_term.lower()
-            # If term matches a known food group (drinks, snacks, roti…) → filter by category
+            term = _SEARCH_SYNONYMS.get(search_term.lower(), search_term.lower())
             if term in _DISH_CATEGORIES:
                 if dish_group != term:
                     continue
             else:
-                # Otherwise match as a dish name substring
                 if term not in name.lower():
                     continue
 

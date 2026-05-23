@@ -57,6 +57,9 @@ general         → out of scope / greeting / chitchat / unclear
                   (e.g. "what about the second one?", "tell me more about that", "and them?",
                    "uske baad kaun?", "compare that", "who is next on the list?")
                   When in doubt between a business intent and a follow-up, prefer general.
+                  IMPORTANT: Business performance questions are NOT general —
+                  "good day or slow day?", "kaisa raha aaj?", "was today busy?" → daily_report
+                  "kitna kamaya?" without context → revenue
 
 Also extract:
 - date_hint: any time reference ("kal", "yesterday", "last week") — null if none
