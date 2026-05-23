@@ -14,6 +14,10 @@ def _parse_variants(raw) -> list[dict]:
     return raw if isinstance(raw, list) else []
 
 
+# Bill-App dish category values (the food-type grouping)
+_DISH_CATEGORIES = {"roti", "drinks", "snacks", "rice", "sabji", "other"}
+
+
 def _date_label(d: _date) -> str:
     today = _date.today()
     if d == today:
@@ -36,12 +40,29 @@ def _revenue_verdict(daily_avg: float) -> str:
 
 
 def _unwrap_history(raw) -> list[dict]:
-    """Extract the list from various Bill-App history response shapes."""
+    """Extract the list from Bill-App history response. Real shape: {success, data: [{period, earnings}]}"""
+    if isinstance(raw, list):
+        return raw
     if isinstance(raw, dict):
         for key in ("data", "earnings", "history", "records"):
             if key in raw and isinstance(raw[key], list):
                 return raw[key]
-    return raw if isinstance(raw, list) else []
+        # Fallback: first list value in the dict
+        for v in raw.values():
+            if isinstance(v, list):
+                return v
+    return []
+
+
+def _entry_date(entry: dict) -> str:
+    """Extract date from a history entry. Real field: 'period'."""
+    return (entry.get("period") or entry.get("date") or entry.get("earning_date") or "")[:10]
+
+
+def _entry_revenue(entry: dict) -> float:
+    """Extract revenue from a history entry. Real field: 'earnings'."""
+    val = entry.get("earnings") or entry.get("total_earnings") or entry.get("revenue") or 0
+    return float(val)
 
 
 # ─── public API ─────────────────────────────────────────────────────────────
@@ -74,25 +95,33 @@ def filter_dishes(
 
     for dish in dishes:
         name = dish.get("name", "")
-        raw_cat = (dish.get("category") or "").lower().strip()
+        # `type` = dietary (veg/non-veg). `category` = food group (roti/drinks/snacks/rice/sabji/other)
+        dietary_type = (dish.get("type") or "").lower().strip()
+        dish_group = (dish.get("category") or "").lower().strip()
         variants = _parse_variants(dish.get("variants", []))
 
-        # Category filter — exact match on normalised strings
+        # Dietary filter — uses the `type` field, not `category`
         if cat_norm:
-            if cat_norm == "veg" and raw_cat != "veg":
+            if cat_norm == "veg" and dietary_type != "veg":
                 continue
-            if cat_norm in ("non-veg", "nonveg", "non veg") and "non" not in raw_cat:
-                continue
-            if cat_norm == "egg" and "egg" not in raw_cat:
+            if cat_norm in ("non-veg", "nonveg", "non veg") and dietary_type != "non-veg":
                 continue
 
-        # Name search
-        if search_term and search_term.lower() not in name.lower():
-            continue
+        # search_term: match against dish name OR dish food-group category
+        if search_term:
+            term = search_term.lower()
+            # If term matches a known food group (drinks, snacks, roti…) → filter by category
+            if term in _DISH_CATEGORIES:
+                if dish_group != term:
+                    continue
+            else:
+                # Otherwise match as a dish name substring
+                if term not in name.lower():
+                    continue
 
         # Price filter — keep only variants in range
         qualifying = [
-            {"variant": v.get("name", ""), "price": v.get("price", 0)}
+            {"size": v.get("size", v.get("name", "")), "price": v.get("price", 0)}
             for v in variants
             if (max_price is None or v.get("price", 0) <= max_price)
             and (min_price is None or v.get("price", 0) >= min_price)
@@ -100,13 +129,13 @@ def filter_dishes(
         if (max_price is not None or min_price is not None) and not qualifying:
             continue
 
-        all_prices = [v.get("price", 0) for v in variants]
         displayed = qualifying if qualifying else [
-            {"variant": v.get("name", ""), "price": v.get("price", 0)} for v in variants
+            {"size": v.get("size", v.get("name", "")), "price": v.get("price", 0)} for v in variants
         ]
         matches.append({
             "name": name,
-            "category": dish.get("category", ""),
+            "type": dietary_type,
+            "category": dish_group,
             "price": min(p["price"] for p in displayed),
             "variants": displayed,
         })
@@ -170,9 +199,9 @@ def extract_date_revenue(history_response, target_date: str) -> dict:
     """Find a specific date's revenue from a history array."""
     entries = _unwrap_history(history_response)
     for entry in entries:
-        d = (entry.get("date") or entry.get("earning_date") or "")[:10]
+        d = _entry_date(entry)
         if d == target_date:
-            rev = float(entry.get("total_earnings", entry.get("revenue", 0)) or 0)
+            rev = _entry_revenue(entry)
             try:
                 label = _date_label(_date.fromisoformat(d))
             except ValueError:
@@ -199,14 +228,14 @@ def find_peak_day(
     raw = _unwrap_history(history_response)
     entries = []
     for entry in raw:
-        d = (entry.get("date") or entry.get("earning_date") or "")[:10]
+        d = _entry_date(entry)
         if not d:
             continue
         if from_date and d < from_date:
             continue
         if to_date and d > to_date:
             continue
-        rev = float(entry.get("total_earnings", entry.get("revenue", 0)) or 0)
+        rev = _entry_revenue(entry)
         try:
             day_obj = _date.fromisoformat(d)
             entries.append({

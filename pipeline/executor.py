@@ -60,16 +60,23 @@ def _post_process(state: PipelineState, results: dict) -> dict:
                 results["get_earnings_history"] = extract_date_revenue(results["get_earnings_history"], target)
 
     elif name == "menu" and "get_all_dishes" in results:
-        results["get_all_dishes"] = filter_dishes(
-            results["get_all_dishes"],
-            max_price=intent.get("max_price"),
-            min_price=intent.get("min_price"),
-            category=intent.get("category_filter"),
-            search_term=intent.get("search_term"),
-        )
+        max_p = intent.get("max_price")
+        min_p = intent.get("min_price")
+        cat = intent.get("category_filter")
+        term = intent.get("search_term")
+        # Only transform when user specified a filter — raw list is fine otherwise
+        if any([max_p, min_p, cat, term]):
+            results["get_all_dishes"] = filter_dishes(
+                results["get_all_dishes"],
+                max_price=max_p, min_price=min_p,
+                category=cat, search_term=term,
+            )
 
     elif name == "historical_trend" and "get_earnings_history" in results:
-        results["get_earnings_history"] = find_peak_day(results["get_earnings_history"])
+        # Only apply peak-day extraction for "which day / highest / best day" queries
+        _peak_signals = ("highest", "best day", "peak day", "which day", "konsa din", "most revenue")
+        if any(s in query.lower() for s in _peak_signals):
+            results["get_earnings_history"] = find_peak_day(results["get_earnings_history"])
 
     elif name == "customer_dues" and "get_all_customer_ledgers" in results:
         results["get_all_customer_ledgers"] = rank_customers(results["get_all_customer_ledgers"])
