@@ -22,7 +22,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[#050505] relative">
+    <div className="flex flex-col h-svh bg-[#050505] relative">
       {/* Ambient Orbs — isolated so they don't affect flex children */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-orange-600/10 rounded-full blur-[140px]" />
@@ -46,8 +46,8 @@ export default function App() {
                 </p>
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors"
             >
