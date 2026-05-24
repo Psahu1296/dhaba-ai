@@ -34,8 +34,8 @@ export function InputBar({ onSend, onStop, isLoading, hasMessages }: Props) {
 
   return (
     <div className="w-full flex flex-col gap-4">
-      {!hasMessages && (
-        <div className="flex overflow-x-auto scrollbar-thin flex-nowrap gap-2 sm:gap-2.5 w-full pb-2">
+      {hasMessages && (
+        <div className="hidden md:flex overflow-x-auto scrollbar-thin flex-nowrap gap-2 sm:gap-2.5 w-full pb-2">
           {SUGGESTIONS.map(s => (
             <button
               key={s}

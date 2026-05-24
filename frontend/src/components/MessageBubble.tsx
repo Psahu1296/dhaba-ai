@@ -20,7 +20,7 @@ export function MessageBubble({ message, onFeedback }: Props) {
       )}
 
       <div
-        className={`max-w-[92%] sm:max-w-[85%] rounded-2xl px-4 sm:px-6 py-4 sm:py-5 text-[14px] sm:text-[15px] leading-relaxed ${
+        className={`max-w-[calc(100%-48px)] sm:max-w-[85%] rounded-2xl px-4 sm:px-6 py-4 sm:py-5 text-[14px] sm:text-[15px] leading-relaxed ${
           isUser
             ? 'bg-gradient-to-br from-orange-500 to-amber-600 text-white rounded-tr-sm shadow-[0_8px_20px_rgba(249,115,22,0.25)] border border-orange-400/30'
             : 'bg-white/[0.03] backdrop-blur-3xl border border-white/10 text-zinc-100 rounded-tl-sm shadow-[0_8px_30px_rgba(0,0,0,0.5)]'
@@ -259,30 +259,30 @@ function FeedbackBar({
 
   return (
     <div className="mt-3 pt-3 border-t border-white/5 flex flex-col gap-2">
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <button
           onClick={handleUp}
           disabled={feedback !== undefined}
           title="Helpful"
-          className={`p-1.5 rounded-lg transition-colors ${
+          className={`p-2.5 rounded-lg transition-colors ${
             feedback === 1
               ? 'text-emerald-400'
               : 'text-zinc-600 hover:text-emerald-400 hover:bg-emerald-500/10 disabled:cursor-default'
           }`}
         >
-          <ThumbsUp size={13} strokeWidth={2} />
+          <ThumbsUp size={16} strokeWidth={2} />
         </button>
         <button
           onClick={handleDown}
           disabled={feedback !== undefined}
           title="Wrong answer"
-          className={`p-1.5 rounded-lg transition-colors ${
+          className={`p-2.5 rounded-lg transition-colors ${
             feedback === -1
               ? 'text-red-400'
               : 'text-zinc-600 hover:text-red-400 hover:bg-red-500/10 disabled:cursor-default'
           }`}
         >
-          <ThumbsDown size={13} strokeWidth={2} />
+          <ThumbsDown size={16} strokeWidth={2} />
         </button>
         {feedback === 1 && <span className="text-[11px] text-emerald-600 ml-1">helpful</span>}
         {feedback === -1 && !showCorrection && <span className="text-[11px] text-red-800 ml-1">flagged</span>}

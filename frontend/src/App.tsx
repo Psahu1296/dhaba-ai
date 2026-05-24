@@ -63,7 +63,7 @@ export default function App() {
                 return (
                   <button
                     key={m}
-                    onClick={() => setMode(m)}
+                    onClick={() => { setMode(m); setIsMenuOpen(false); }}
                     className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 md:py-2 rounded-xl text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${isActive
                       ? 'bg-orange-500/10 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.15)] border border-orange-500/20'
                       : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5 border border-transparent'
@@ -78,7 +78,7 @@ export default function App() {
 
             <div className="flex gap-2 w-full md:w-auto">
               <button
-                onClick={loadDailyReport}
+                onClick={() => { loadDailyReport(); setIsMenuOpen(false); }}
                 disabled={isLoading}
                 className="flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-zinc-500 hover:text-amber-400 transition-colors px-3 sm:px-4 py-2.5 md:py-2 rounded-[14px] bg-black/40 md:bg-transparent hover:bg-amber-500/10 border border-white/5 md:border-transparent hover:border-amber-500/20 disabled:opacity-40"
               >
@@ -87,7 +87,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={clearChat}
+                onClick={() => { clearChat(); setIsMenuOpen(false); }}
                 className="flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-zinc-500 hover:text-red-400 transition-colors px-3 sm:px-4 py-2.5 md:py-2 rounded-[14px] bg-black/40 md:bg-transparent hover:bg-red-500/10 border border-white/5 md:border-transparent hover:border-red-500/20"
               >
                 Clear
@@ -97,7 +97,7 @@ export default function App() {
             <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-2 p-2 md:p-0 md:pl-3 border-t md:border-t-0 md:border-l border-white/10 mt-1 md:mt-0">
               <span className="text-[11px] sm:text-[12px] text-zinc-400 font-medium capitalize pl-1 md:pl-0">{user.role}</span>
               <button
-                onClick={logout}
+                onClick={() => { logout(); setIsMenuOpen(false); }}
                 title="Sign out"
                 className="text-zinc-500 flex items-center gap-2 hover:text-red-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/10 font-bold uppercase tracking-wider text-[10px]"
               >
@@ -170,34 +170,34 @@ export default function App() {
 
 function EmptyState({ onSend }: { onSend: (text: string) => void }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center gap-10 w-full max-w-4xl animate-fade-in mx-auto mt-10">
+    <div className="flex flex-col items-center justify-center h-auto md:h-full text-center gap-6 md:gap-10 w-full max-w-4xl animate-fade-in mx-auto mt-6 md:mt-10 py-6 md:py-0">
       <div className="relative group cursor-default">
         <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full group-hover:bg-orange-500/30 transition-all duration-700" />
-        <div className="w-28 h-28 bg-gradient-to-br from-zinc-900 to-black rounded-[2rem] border border-white/10 flex items-center justify-center text-orange-400 shadow-2xl relative z-10 group-hover:scale-105 transition-transform duration-500">
-          <Sparkles size={48} strokeWidth={1.5} />
+        <div className="w-20 h-20 md:w-28 md:h-28 bg-gradient-to-br from-zinc-900 to-black rounded-[1.5rem] md:rounded-[2rem] border border-white/10 flex items-center justify-center text-orange-400 shadow-2xl relative z-10 group-hover:scale-105 transition-transform duration-500">
+          <Sparkles className="w-8 h-8 md:w-12 md:h-12" strokeWidth={1.5} />
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <h2 className="font-bold text-3xl tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-zinc-400">
+      <div className="flex flex-col gap-2 md:gap-3">
+        <h2 className="font-bold text-2xl sm:text-3xl tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-zinc-400">
           How can I help you today?
         </h2>
-        <p className="text-zinc-500 text-[15px] max-w-lg mx-auto font-medium leading-relaxed">
+        <p className="text-zinc-500 text-[14px] sm:text-[15px] max-w-lg mx-auto font-medium leading-relaxed px-4 md:px-0">
           Ask about your menu performance, daily revenue, or request a comprehensive breakdown of your dhaba's operations.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-6 w-full max-w-3xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mt-4 md:mt-6 w-full max-w-3xl px-4 sm:px-0">
         {[
-          { icon: <BarChart3 size={24} strokeWidth={2} />, title: 'Business Report', desc: 'Full performance & analytics overview', query: "Give me today's full business report" },
-          { icon: <UtensilsCrossed size={24} strokeWidth={2} />, title: 'Menu Insights', desc: 'Find top-performing dishes & prices', query: 'What are the top 5 selling dishes overall?' },
-          { icon: <Banknote size={24} strokeWidth={2} />, title: 'Revenue & KPIs', desc: 'Track daily earnings & profit margins', query: "What are today's revenue and KPIs?" },
-          { icon: <PackageOpen size={24} strokeWidth={2} />, title: 'Orders & Expenses', desc: 'Monitor latest costs and stock levels', query: "Show me today's orders and expenses summary" },
+          { icon: <BarChart3 size={22} strokeWidth={2} />, title: 'Business Report', desc: 'Full performance & analytics overview', query: "Give me today's full business report" },
+          { icon: <UtensilsCrossed size={22} strokeWidth={2} />, title: 'Menu Insights', desc: 'Find top-performing dishes & prices', query: 'What are the top 5 selling dishes overall?' },
+          { icon: <Banknote size={22} strokeWidth={2} />, title: 'Revenue & KPIs', desc: 'Track daily earnings & profit margins', query: "What are today's revenue and KPIs?" },
+          { icon: <PackageOpen size={22} strokeWidth={2} />, title: 'Orders & Expenses', desc: 'Monitor latest costs and stock levels', query: "Show me today's orders and expenses summary" },
         ].map(({ icon, title, desc, query }) => (
           <button
             key={title}
             onClick={() => onSend(query)}
-            className="group relative overflow-hidden rounded-2xl p-6 flex items-start gap-5 border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-300 cursor-pointer text-left hover:border-orange-500/30 hover:shadow-[0_8px_30px_rgba(249,115,22,0.1)]"
+            className="group relative overflow-hidden rounded-2xl p-4 sm:p-6 flex items-start gap-3.5 sm:gap-5 border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-300 cursor-pointer text-left hover:border-orange-500/30 hover:shadow-[0_8px_30px_rgba(249,115,22,0.1)]"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 

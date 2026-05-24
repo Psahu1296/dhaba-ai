@@ -17,7 +17,7 @@ export function LoginPage({ onLogin, error, isLoading }: Props) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-[#050505] relative">
+    <div className="flex flex-col items-center justify-center h-[100dvh] bg-[#050505] relative">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-orange-600/10 rounded-full blur-[140px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-amber-500/10 rounded-full blur-[120px]" />
