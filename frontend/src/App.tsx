@@ -4,7 +4,7 @@ import { useAuth } from './hooks/useAuth'
 import { MessageBubble } from './components/MessageBubble'
 import { InputBar } from './components/InputBar'
 import { LoginPage } from './components/LoginPage'
-import { BotMessageSquare, BarChart3, UtensilsCrossed, Banknote, PackageOpen, Sparkles, BrainCircuit, Zap, Leaf, ScrollText, LogOut, Menu, X } from 'lucide-react'
+import { BarChart3, UtensilsCrossed, Banknote, PackageOpen, Sparkles, BrainCircuit, Zap, Leaf, ScrollText, LogOut, Menu, X } from 'lucide-react'
 import type { Mode } from './types'
 
 export default function App() {
@@ -34,8 +34,8 @@ export default function App() {
         <div className="w-full max-w-4xl flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0">
           <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
             <div className="flex items-center gap-4">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20 flex items-center justify-center text-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.15)] group shrink-0">
-                <BotMessageSquare size={22} className="group-hover:scale-110 transition-transform duration-300" strokeWidth={2.5} />
+              <div className="w-11 h-11 rounded-2xl overflow-hidden bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20 flex items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.15)] group shrink-0">
+                <img src="/dhaba_logo.png" alt="Dhaba AI Logo" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
               </div>
               <div>
                 <h1 className="font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500 tracking-tight leading-tight">
@@ -154,7 +154,7 @@ export default function App() {
       </div>
 
       {/* Input */}
-      <div className="shrink-0 relative z-10 flex justify-center w-full px-4 sm:px-6 md:px-8 pb-4 sm:pb-8" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+      <div className="shrink-0 relative z-10 flex justify-center w-full px-4 sm:px-6 md:px-8 input-wrapper">
         <div className="w-full max-w-4xl">
           <InputBar
             onSend={sendMessage}

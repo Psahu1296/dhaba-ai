@@ -43,3 +43,13 @@ body {
   background: rgba(255, 255, 255, 0.2); 
 }
 
+.input-wrapper {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 640px) {
+  .input-wrapper {
+    padding-bottom: 2rem;
+  }
+}
+

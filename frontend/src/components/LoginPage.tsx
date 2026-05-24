@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { BotMessageSquare } from 'lucide-react'
 
 interface Props {
   onLogin: (email: string, password: string) => Promise<boolean>
@@ -25,8 +24,8 @@ export function LoginPage({ onLogin, error, isLoading }: Props) {
 
       <div className="relative z-10 w-full max-w-sm px-6 flex flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20 flex items-center justify-center text-orange-500 shadow-[0_0_30px_rgba(249,115,22,0.2)]">
-            <BotMessageSquare size={28} strokeWidth={2.5} />
+          <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20 flex items-center justify-center shadow-[0_0_30px_rgba(249,115,22,0.2)]">
+            <img src="/dhaba_logo.png" alt="Dhaba AI Logo" className="w-full h-full object-cover" />
           </div>
           <div className="text-center">
             <h1 className="font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500 tracking-tight">
