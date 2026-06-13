@@ -4,7 +4,7 @@ import sys
 import os
 import httpx
 
-BASE_URL = os.getenv("EVAL_API_BASE", "https://dhaba-ai-production.up.railway.app")
+BASE_URL = os.getenv("EVAL_API_BASE", "https://dhaba-ai.onrender.com")
 API_KEY = os.getenv("EVAL_API_KEY", "3e263b3904fb1a7def01b56860ce66369ad73bc04898eb545f295de0a1717297")
 
 QUESTIONS_FILE = os.path.join(os.path.dirname(__file__), "questions.json")
