@@ -261,8 +261,50 @@ async def get_consumables_summary(date: str = None) -> dict:
 
 
 async def get_daily_summary(date: str) -> dict:
-    response = await _request("GET", f"/api/daily-summary/{date}")
-    return response.json().get("data", {})
+    try:
+        response = await _request("GET", f"/api/daily-summary/{date}")
+        data = response.json().get("data", {})
+        if data and (data.get("order_count", 0) > 0 or data.get("revenue", 0) > 0):
+            return data
+    except Exception:
+        pass
+
+    # Fallback: compute from orders when daily_earnings table is stale
+    orders_data = await get_orders(date=date)
+    orders = orders_data if isinstance(orders_data, list) else orders_data.get("data", orders_data.get("orders", []))
+
+    revenue = sum(o.get("bills", {}).get("total", 0) for o in orders)
+
+    payment_split = {"cash": 0, "upi": 0, "card": 0, "credit": 0}
+    for o in orders:
+        pm = (o.get("paymentMethod") or "").lower()
+        if pm in payment_split:
+            payment_split[pm] += 1
+
+    counts = {}
+    for order in orders:
+        items = order.get("items", [])
+        if isinstance(items, str):
+            items = _json.loads(items)
+        for item in items:
+            name = item.get("name") or "unknown"
+            qty = int(item.get("quantity") or 1)
+            counts[name] = counts.get(name, 0) + qty
+    top_items = [
+        {"name": n, "quantity": q}
+        for n, q in sorted(counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    ]
+
+    expenses_data = await get_expenses(from_date=date, to_date=date)
+
+    return {
+        "date": date,
+        "revenue": revenue,
+        "order_count": len(orders),
+        "payment_split": payment_split,
+        "top_items_by_qty": top_items,
+        "expenses_rupees": expenses_data.get("total_rupees", 0),
+    }
 
 
 async def get_daily_summary_range(from_date: str, to_date: str) -> list:
