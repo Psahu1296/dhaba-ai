@@ -141,9 +141,9 @@ async def get_peak_hours_today(date: str = None) -> str:
 
 @tool
 async def get_earnings_history(period: str = "day", num_periods: int = 7) -> str:
-    """Revenue time series for past N periods — for historical dates or trend analysis.
-    period: 'day' (default), 'week', 'month', 'year'.
-    num_periods: how far back. For a specific past date use period='day', num_periods=31.
+    """Revenue time series for trend analysis — best/worst days, week-over-week comparison, monthly patterns.
+    period: 'day' (default), 'week', 'month', 'year'. num_periods: how far back.
+    NOT for a single specific past date — use get_daily_summary for that.
     NOT for current totals (today/week/month) — use get_dashboard_kpis for those."""
     result = await _earnings_history(period, num_periods)
     return codec.encode_tool_result("get_earnings_history", result)
