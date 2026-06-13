@@ -1,7 +1,6 @@
 from langchain_core.tools import tool
 from tools import codec
-from datetime import date as _date, timedelta as _timedelta
-import re as _re
+from tools.dates import resolve_day, resolve_range
 from tools.bill_app import (
     get_top_dishes as _top_dishes,
     get_dashboard_kpis as _kpis,
@@ -27,47 +26,15 @@ from tools.daily_embedder import search_daily_summaries as _search_daily
 @tool
 def resolve_date(relative: str) -> str:
     """Convert a relative time expression to concrete YYYY-MM-DD dates.
-    Call before any data tool when the user uses relative time (kal, yesterday, last week, etc.).
+    You usually DON'T need this — data tools resolve relative terms themselves.
+    Use it only when you want to show the user the concrete date you're querying.
     Returns: {"date": "YYYY-MM-DD"} for a single day, {"from": ..., "to": ...} for a range.
     relative: the exact time phrase from the user."""
     import json
-    today = _date.today()
-    rel = relative.lower().strip()
-
-    single = {
-        "today": 0, "aaj": 0, "abhi": 0,
-        "yesterday": 1, "kal": 1, "kal ka": 1,
-        "day before yesterday": 2, "parso": 2,
-    }
-    for key, days in single.items():
-        if rel == key:
-            d = today - _timedelta(days=days)
-            return json.dumps({"date": d.isoformat()})
-
-    m = _re.match(r'(\d+)\s*(?:days?\s*ago|din\s*pehle)', rel)
-    if m:
-        d = today - _timedelta(days=int(m.group(1)))
-        return json.dumps({"date": d.isoformat()})
-
-    if rel in ("this week", "is hafte", "is week"):
-        start = today - _timedelta(days=today.weekday())
-        return json.dumps({"from": start.isoformat(), "to": today.isoformat()})
-
-    if rel in ("last week", "pichle hafte"):
-        start = today - _timedelta(days=today.weekday() + 7)
-        end = start + _timedelta(days=6)
-        return json.dumps({"from": start.isoformat(), "to": end.isoformat()})
-
-    if rel in ("this month", "is mahine", "is month"):
-        start = today.replace(day=1)
-        return json.dumps({"from": start.isoformat(), "to": today.isoformat()})
-
-    if rel in ("last month", "pichle mahine"):
-        end = today.replace(day=1) - _timedelta(days=1)
-        start = end.replace(day=1)
-        return json.dumps({"from": start.isoformat(), "to": end.isoformat()})
-
-    return json.dumps({"date": today.isoformat(), "note": f"Could not parse '{relative}', defaulted to today"})
+    rng = resolve_range(relative)
+    if rng:
+        return json.dumps({"from": rng[0], "to": rng[1]})
+    return json.dumps({"date": resolve_day(relative, default_today=True)})
 
 
 @tool
@@ -90,8 +57,10 @@ async def get_dashboard_kpis() -> str:
 @tool
 async def get_expenses(from_date: str = None, to_date: str = None) -> str:
     """Expense records with total for a date range.
-    from_date, to_date: YYYY-MM-DD. Use resolve_date first for relative terms.
+    from_date, to_date: accept 'kal'/'yesterday'/'aaj' or YYYY-MM-DD — resolved automatically.
     Omit both for all-time expenses."""
+    from_date = resolve_day(from_date)
+    to_date = resolve_day(to_date)
     result = await _expenses(from_date, to_date)
     return codec.encode_tool_result("get_expenses", result)
 
@@ -99,8 +68,9 @@ async def get_expenses(from_date: str = None, to_date: str = None) -> str:
 @tool
 async def get_orders(date: str = None, status: str = None) -> str:
     """Raw order list — individual orders with items, amounts, table, payment status.
-    date: YYYY-MM-DD. Use resolve_date first for relative terms.
+    date: accept 'kal'/'yesterday'/'aaj' or YYYY-MM-DD — resolved automatically.
     status: "Completed" or "Pending". Omit for all orders."""
+    date = resolve_day(date)
     result = await _orders(date, status)
     return codec.encode_tool_result("get_orders", result)
 
@@ -125,8 +95,9 @@ async def search_dishes(query: str, n_results: int = 4) -> str:
 @tool
 async def get_todays_top_items(limit: int = 10, date: str = None) -> str:
     """Top selling items by quantity on a specific date.
-    date: YYYY-MM-DD. Use resolve_date first for relative terms.
+    date: accept 'kal'/'yesterday'/'aaj' or YYYY-MM-DD — resolved automatically. Defaults to today.
     NOT for all-time bestsellers — use get_top_dishes for that."""
+    date = resolve_day(date, default_today=True)
     result = await _todays_items(limit, date)
     return codec.encode_tool_result("get_todays_top_items", result)
 
@@ -134,7 +105,8 @@ async def get_todays_top_items(limit: int = 10, date: str = None) -> str:
 @tool
 async def get_peak_hours_today(date: str = None) -> str:
     """Peak ordering hours on a specific date — when was it busiest and order count per hour.
-    date: YYYY-MM-DD. Use resolve_date first for relative terms."""
+    date: accept 'kal'/'yesterday'/'aaj' or YYYY-MM-DD — resolved automatically. Defaults to today."""
+    date = resolve_day(date, default_today=True)
     result = await _peak_hours(date)
     return codec.encode_tool_result("get_peak_hours_today", result)
 
@@ -162,7 +134,8 @@ async def get_all_customer_ledgers(status: str = None) -> str:
 @tool
 async def get_consumables_summary(date: str = None) -> str:
     """Daily breakdown of chai, gutka, and cigarette usage — sold, consumed by staff, wasted.
-    date: YYYY-MM-DD. Use resolve_date first for relative terms."""
+    date: accept 'kal'/'yesterday'/'aaj' or YYYY-MM-DD — resolved automatically. Defaults to today."""
+    date = resolve_day(date, default_today=True)
     result = await _consumables_summary(date)
     return codec.encode_tool_result("get_consumables_summary", result)
 
@@ -188,7 +161,8 @@ async def get_all_dishes(
 async def get_daily_summary(date: str) -> str:
     """Full business picture for one specific past date — revenue, orders, payment split,
     top items, peak hour, expenses, consumables. All in one call.
-    date: YYYY-MM-DD. Use resolve_date first for relative terms like 'kal', 'yesterday'."""
+    date: accept 'kal'/'yesterday'/'parso' or YYYY-MM-DD — resolved automatically."""
+    date = resolve_day(date, default_today=True)
     result = await _daily_summary(date)
     return codec.encode_tool_result("get_daily_summary", result)
 
@@ -197,7 +171,9 @@ async def get_daily_summary(date: str) -> str:
 async def get_earnings_range(from_date: str, to_date: str) -> str:
     """Revenue per day for an arbitrary date range. Returns [{date, revenue}] array.
     Use for trend queries, monthly totals, or finding best/worst day in a period.
-    from_date, to_date: YYYY-MM-DD. Use resolve_date first for relative terms."""
+    from_date, to_date: accept 'kal'/'yesterday'/'aaj' or YYYY-MM-DD — resolved automatically."""
+    from_date = resolve_day(from_date, default_today=True)
+    to_date = resolve_day(to_date, default_today=True)
     result = await _earnings_range(from_date, to_date)
     return codec.encode_tool_result("get_earnings_range", result)
 
@@ -206,7 +182,9 @@ async def get_earnings_range(from_date: str, to_date: str) -> str:
 async def get_top_revenue_dishes(limit: int = 10, from_date: str = None, to_date: str = None) -> str:
     """Top dishes ranked by total revenue earned (quantity × price) — NOT by order count.
     Answers 'which dish makes the most money?' — different from get_top_dishes (by volume).
-    limit: max results. from_date / to_date: optional date range (YYYY-MM-DD)."""
+    limit: max results. from_date / to_date: 'kal'/'yesterday' or YYYY-MM-DD — resolved automatically."""
+    from_date = resolve_day(from_date)
+    to_date = resolve_day(to_date)
     result = await _top_revenue_dishes(limit, from_date, to_date)
     return codec.encode_tool_result("get_top_revenue_dishes", result)
 

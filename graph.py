@@ -8,7 +8,7 @@ from tools.lc_tools import ALL_TOOLS
 from tools import codec
 import psycopg
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 
@@ -57,10 +57,10 @@ For anything outside this (menu suggestions, marketing copy, general knowledge, 
 
 ## Few-Shot Examples (correct patterns — learn from these)
 Q: "Aaj kitna hua?" → get_dashboard_kpis → "Aaj ₹2,377 kamai hui — normal din hai, weekly average ke aaspaas."
-Q: "Kal ke top items?" → resolve_date("kal") → get_todays_top_items(date=result) → "Kal Roti sabse zyada bika (75 units), phir Gutka (21). Roti menu ko carry kar raha hai."
-Q: "Give me today's full report" → get_dashboard_kpis + get_todays_top_items + get_peak_hours_today + get_expenses(today, today) → lead with verdict: "Normal day — ₹2,100 revenue, 14 orders." then top dishes, then peak hours, then expenses.
-Q: "Kal kaisa raha?" / "How was yesterday's business?" → resolve_date("yesterday") → get_daily_summary(date) → lead with verdict: "Kal ka business ₹X raha — [slow/normal/strong day]."
-Q: "Give me yesterday's full report" → resolve_date("yesterday") → get_daily_summary(date) → report with verdict line first.
+Q: "Kal ke top items?" → get_todays_top_items(date="kal") → "Kal Roti sabse zyada bika (75 units), phir Gutka (21). Roti menu ko carry kar raha hai."
+Q: "Give me today's full report" → get_dashboard_kpis + get_todays_top_items + get_peak_hours_today + get_expenses(from_date="aaj", to_date="aaj") → lead with verdict: "Normal day — ₹2,100 revenue, 14 orders." then top dishes, then peak hours, then expenses.
+Q: "Kal kaisa raha?" / "How was yesterday's business?" → get_daily_summary(date="kal") → lead with verdict: "Kal ka business ₹X raha — [slow/normal/strong day]."
+Q: "Give me yesterday's full report" → get_daily_summary(date="yesterday") → report with verdict line first.
 Q: "Expenses this week?" → get_expenses(from_date=this_week_start, to_date=today) → "Is hafte ₹X kharcha hua — normal range mein hai."
 Q: "This week's revenue / is hafte kitna hua?" → get_dashboard_kpis → report week_revenue_rupees directly. Do NOT call get_earnings_history for a simple weekly total.
 Q: "Who owes us the most?" → get_all_customer_ledgers() → "Sabse zyada [Name] ka ₹X baki hai. Total outstanding ₹Y hai."
@@ -70,12 +70,12 @@ Q: "Best dish?" → get_top_dishes() → report top dish name + order count from
 
 ## Tool Use
 Each tool's docstring tells you exactly when to use it — read those, not this section.
-Key rule: if the user mentions any relative time (kal, yesterday, last week, etc.) — call resolve_date FIRST to get the concrete date, then pass that to data tools.
+Key rule: if the user mentions any relative time (kal, yesterday, parso, etc.) — pass that phrase DIRECTLY to the tool's date parameter (e.g. get_daily_summary(date="kal")). The tools resolve dates to concrete IST dates themselves. Do NOT calculate dates and do NOT call resolve_date first for single-day queries.
 Customer rule: NEVER ask for a phone number when the user asks about dues/balances in general — call get_all_customer_ledgers. Only call get_customer_balance when user gives a specific phone number or customer name.
 
 ## Reports
 When asked for a full business report for TODAY: call get_dashboard_kpis + get_todays_top_items + get_peak_hours_today + get_expenses (today's date). Lead with one verdict line: "Strong day — ₹X revenue." or "Slow day — only Z orders."
-When asked for a report for a PAST DATE (or "how was yesterday", "kal kaisa raha"): call resolve_date first, then get_daily_summary(date) — it returns everything in one call. Lead with: "Here's [date]'s report:" or a verdict line like "Kal ₹X raha — [slow/normal/strong day]."
+When asked for a report for a PAST DATE (or "how was yesterday", "kal kaisa raha"): call get_daily_summary(date="kal") directly — pass the time phrase, it returns everything in one call. Lead with: "Here's [date]'s report:" or a verdict line like "Kal ₹X raha — [slow/normal/strong day]."
 
 ## Empty Results vs Errors — know the difference
 - Expenses tool returns empty list → "Aaj ₹0 kharcha hua — koi expense record nahi mila." (NORMAL — no purchases that day)
@@ -128,13 +128,11 @@ async def call_llm(state: MessagesState, config: RunnableConfig):
     role = config.get("configurable", {}).get("role", "admin")
     scope = STAFF_SCOPE if role == "staff" else OWNER_SCOPE
     date_block = (
-        f"Current date: {today.isoformat()} ({today.strftime('%A, %d %B %Y')}). "
-        f"Current time: {now.strftime('%H:%M')} IST.\n"
-        f"Pre-resolved dates (use directly as tool parameters — no calculation needed):\n"
-        f"  today={today.isoformat()}, yesterday={(today - timedelta(days=1)).isoformat()}, "
-        f"  day_before_yesterday={(today - timedelta(days=2)).isoformat()}, "
-        f"  this_week_start={(today - timedelta(days=today.weekday())).isoformat()}, "
-        f"  this_month_start={today.replace(day=1).isoformat()}"
+        f"Current date: {today.isoformat()} ({today.strftime('%A, %d %B %Y')}), {now.strftime('%H:%M')} IST.\n"
+        f"DATE HANDLING — do NOT calculate dates yourself. For any date parameter, pass the "
+        f"user's own time phrase straight through: 'kal', 'yesterday', 'aaj', 'today', 'parso', "
+        f"or a literal YYYY-MM-DD. The tools resolve these to concrete IST dates internally. "
+        f"Never guess or compute a date — passing 'kal' is always correct and safe."
     )
     dated_prompt = SystemMessage(
         content=date_block + "\n\n" + SYSTEM_PROMPT.content + scope
