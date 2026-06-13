@@ -189,7 +189,9 @@ async def chat_stream_endpoint(req: ChatRequest):
 async def agent_chat(req: ChatRequest, user: dict = Depends(get_current_user)):
     thread_id = req.session_id or str(uuid.uuid4())
     answer = await run_pipeline(req.message, thread_id, role=user["role"])
-    return {"answer": answer, "session_id": thread_id, "toon_chars_saved": codec.total_chars_saved()}
+    # NOTE: the pipeline sends clean JSON to the synthesizer (not TOON), so no
+    # toon_chars_saved is reported here — it would always be a meaningless 0.
+    return {"answer": answer, "session_id": thread_id}
 
 
 @app.post("/agent/chat/stream")

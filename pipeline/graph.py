@@ -7,8 +7,34 @@ from pipeline.planner import plan_workflow
 from pipeline.executor import execute_tools
 from pipeline.verifier import verify_results
 from pipeline.synthesizer import synthesize_stream, _SYSTEM
+from pipeline import guard
 
 logger = logging.getLogger(__name__)
+
+# Below this classifier confidence we ask the user to clarify rather than run a
+# possibly-wrong tool chain. The pre-filter and clear LLM hits sit at 0.8–1.0,
+# so this only catches genuinely ambiguous queries.
+_CONFIDENCE_THRESHOLD = 0.45
+_CLARIFY_MSG = (
+    "Samajh nahi aaya thoda — aap revenue, expenses, orders, dishes, customer dues, "
+    "ya report mein se kis baare mein puchh rahe hain? Thoda saaf bata dijiye."
+)
+
+
+def _needs_clarification(state: dict) -> bool:
+    intent = state.get("intent") or {}
+    return (
+        intent.get("intent") not in ("general", None)
+        and float(intent.get("confidence") or 0) < _CONFIDENCE_THRESHOLD
+    )
+
+
+# Intents complex enough to justify the stronger (escalation) model for synthesis.
+_ESCALATE_INTENTS = {"historical_trend"}
+
+
+def _should_escalate(state: dict) -> bool:
+    return (state.get("intent") or {}).get("intent") in _ESCALATE_INTENTS
 
 
 async def init_pipeline(database_url: str):
@@ -68,15 +94,21 @@ async def run_pipeline(message: str, session_id: str, role: str = "admin") -> st
     state = await _run_stages(message, role)
     _trace(state, int((time.monotonic() - t0) * 1000))
 
+    if _needs_clarification(state):
+        logger.info("pipeline | low confidence, asking to clarify | query=%r", message[:80])
+        await memory.save(session_id, message, _CLARIFY_MSG)
+        return _CLARIFY_MSG
+
     verified = state["verified"]
     if not verified["passed"]:
         return f"Data unavailable — {'; '.join(verified['issues'])}"
 
     messages = _build_messages(state, message, history)
     tokens: list[str] = []
-    async for token in synthesize_stream(messages):
+    async for token in synthesize_stream(messages, escalate=_should_escalate(state)):
         tokens.append(token)
     response = "".join(tokens)
+    guard.check(response, verified.get("data"), query=message)
     await memory.save(session_id, message, response)
     return response
 
@@ -87,6 +119,12 @@ async def run_pipeline_stream(message: str, session_id: str, role: str = "admin"
     state = await _run_stages(message, role)
     _trace(state, int((time.monotonic() - t0) * 1000))
 
+    if _needs_clarification(state):
+        logger.info("pipeline | low confidence, asking to clarify | query=%r", message[:80])
+        await memory.save(session_id, message, _CLARIFY_MSG)
+        yield _CLARIFY_MSG
+        return
+
     verified = state["verified"]
     if not verified["passed"]:
         yield f"Data unavailable — {'; '.join(verified['issues'])}"
@@ -95,8 +133,10 @@ async def run_pipeline_stream(message: str, session_id: str, role: str = "admin"
     messages = _build_messages(state, message, history)
 
     tokens: list[str] = []
-    async for token in synthesize_stream(messages):
+    async for token in synthesize_stream(messages, escalate=_should_escalate(state)):
         tokens.append(token)
         yield token
 
-    await memory.save(session_id, message, "".join(tokens))
+    full = "".join(tokens)
+    guard.check(full, verified.get("data"), query=message)
+    await memory.save(session_id, message, full)

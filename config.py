@@ -10,6 +10,9 @@ BILL_APP_EMAIL = os.getenv("BILL_APP_EMAIL")
 BILL_APP_PASSWORD = os.getenv("BILL_APP_PASSWORD")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://localhost:11434/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2")
+# Stronger model for the hardest queries (e.g. trend analysis). Empty = disabled
+# (everything uses LLM_MODEL). Kept separate so escalation can be A/B'd cheaply.
+ESCALATION_MODEL = os.getenv("ESCALATION_MODEL", "")
 API_KEY = os.getenv("API_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET", "dhaba-ai-jwt-secret-change-in-prod")
 DATABASE_URL = os.getenv("DATABASE_URL", "")

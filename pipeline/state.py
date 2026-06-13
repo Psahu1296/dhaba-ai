@@ -38,6 +38,7 @@ class PipelineState(TypedDict):
     role: str
     intent: Optional[IntentResult]
     plan: Optional[ExecutionPlan]
+    primary_tool: Optional[str]   # the tool whose success the verifier gates on
     raw_results: Optional[ExecutionResult]
     verified: Optional[VerifiedResult]
     response: Optional[str]

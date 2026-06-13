@@ -1,46 +1,21 @@
-from datetime import date, timedelta
-import re
 from pipeline.state import PipelineState, ExecutionPlan, ToolStep, IntentResult
 from tools.processors import detect_period
+from tools.dates import resolve_day, resolve_range, today_ist
 
 
 def _resolve_date(hint: str | None) -> dict:
-    """Maps a date hint string to concrete YYYY-MM-DD dates."""
-    today = date.today()
+    """Maps a date hint to concrete YYYY-MM-DD dates, resolved against IST.
+
+    Delegates to tools.dates so the pipeline shares the single, timezone-correct
+    resolver. Bare date.today() here was a bug: Railway runs UTC, so 'today'
+    during IST 00:00–05:30 resolved to yesterday.
+    """
     if not hint:
-        return {"date": today.isoformat()}
-
-    h = hint.lower().strip()
-
-    single_offsets = {
-        "today": 0, "aaj": 0, "abhi": 0,
-        "yesterday": 1, "kal": 1, "kal ka": 1,
-        "day before yesterday": 2, "parso": 2,
-    }
-    for key, days in single_offsets.items():
-        if h == key:
-            return {"date": (today - timedelta(days=days)).isoformat()}
-
-    m = re.match(r'(\d+)\s*(?:days?\s*ago|din\s*pehle)', h)
-    if m:
-        return {"date": (today - timedelta(days=int(m.group(1)))).isoformat()}
-
-    if h in ("this week", "is hafte", "is week"):
-        start = today - timedelta(days=today.weekday())
-        return {"from": start.isoformat(), "to": today.isoformat()}
-
-    if h in ("last week", "pichle hafte"):
-        start = today - timedelta(days=today.weekday() + 7)
-        return {"from": start.isoformat(), "to": (start + timedelta(days=6)).isoformat()}
-
-    if h in ("this month", "is mahine", "is month"):
-        return {"from": today.replace(day=1).isoformat(), "to": today.isoformat()}
-
-    if h in ("last month", "pichle mahine"):
-        end = today.replace(day=1) - timedelta(days=1)
-        return {"from": end.replace(day=1).isoformat(), "to": end.isoformat()}
-
-    return {"date": today.isoformat()}
+        return {"date": today_ist().isoformat()}
+    rng = resolve_range(hint)
+    if rng:
+        return {"from": rng[0], "to": rng[1]}
+    return {"date": resolve_day(hint, default_today=True)}
 
 
 def plan_workflow(state: PipelineState) -> dict:
@@ -50,7 +25,7 @@ def plan_workflow(state: PipelineState) -> dict:
     phone = intent.get("phone")
     query = state["query"]
 
-    today = date.today().isoformat()
+    today = today_ist().isoformat()
     dates = _resolve_date(hint)
     single_date = dates.get("date", today)
     from_date = dates.get("from", single_date)
@@ -73,11 +48,16 @@ def plan_workflow(state: PipelineState) -> dict:
 
     elif name == "revenue":
         period = intent.get("period") or detect_period(hint, query)
-        if period in ("today", "week", "month", "year"):
+        if dates.get("date") and dates["date"] != today:
+            # Specific past day ("yesterday", "kal", "3 days ago") — report THAT
+            # day's revenue, not today's. detect_period defaults to "today", which
+            # used to silently swallow a past date_hint and return today instead.
+            steps = [{"tool_name": "get_earnings_range",
+                      "args": {"from_date": single_date, "to_date": single_date}}]
+        elif period in ("today", "week", "month", "year"):
             # KPI dashboard has all four pre-computed — no array scanning needed
             steps = [{"tool_name": "get_dashboard_kpis", "args": {"_period": period}}]
         else:
-            # specific past date (e.g. "yesterday", "3 days ago") → history
             steps = [{"tool_name": "get_earnings_history", "args": {"period": "day", "num_periods": 31}}]
 
     elif name == "expenses":
@@ -121,4 +101,29 @@ def plan_workflow(state: PipelineState) -> dict:
 
     # "general" → empty steps, synthesizer handles without any tool data
 
-    return {"plan": ExecutionPlan(steps=steps)}
+    # Stamp the tool that MUST succeed for this answer to be trustworthy.
+    # The verifier blocks the response if this specific tool failed. Computed
+    # here (not in the verifier) because only the planner knows which branch it
+    # took — e.g. revenue runs get_dashboard_kpis OR get_earnings_history.
+    primary = _PRIMARY_TOOL.get(name) or (steps[0]["tool_name"] if steps else None)
+
+    return {"plan": ExecutionPlan(steps=steps), "primary_tool": primary}
+
+
+# Intent → the single tool whose success the answer depends on. Intents not
+# listed (e.g. revenue, which picks its tool at runtime) fall back to the first
+# planned step. "general" has no tool and is intentionally absent.
+_PRIMARY_TOOL = {
+    "daily_report":     "get_dashboard_kpis",
+    "past_report":      "get_daily_summary",
+    "expenses":         "get_expenses",
+    "top_dishes":       "get_top_dishes",
+    "todays_items":     "get_todays_top_items",
+    "peak_hours":       "get_peak_hours_today",
+    "customer_dues":    "get_all_customer_ledgers",
+    "customer_balance": "get_customer_balance",
+    "orders":           "get_orders",
+    "menu":             "get_all_dishes",
+    "consumables":      "get_consumables_summary",
+    "historical_trend": "get_earnings_range",
+}

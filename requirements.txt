@@ -18,3 +18,5 @@ asyncpg>=0.30
 psycopg[binary]>=3.1
 langgraph-checkpoint-postgres>=2.0
 PyJWT>=2.8.0
+tenacity>=8.2
+rapidfuzz>=3.6

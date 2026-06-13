@@ -10,18 +10,18 @@ import asyncio
 import os
 import re
 import sys
-import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from datetime import date
+from config import DATABASE_URL
+from tools.dates import today_ist
 from tools.bill_app import (
     login,
     get_dashboard_kpis as _kpis,
     get_top_dishes as _top_dishes,
     get_expenses as _expenses,
 )
-from graph import run_graph
+from pipeline.graph import init_pipeline, run_pipeline
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ async def fetch_ground_truth() -> dict:
     )
     top_dish = dishes[0].get("name", "") if dishes else ""
 
-    today = date.today().isoformat()
+    today = today_ist().isoformat()
     exp_raw = await _expenses(from_date=today, to_date=today)
     records = exp_raw if isinstance(exp_raw, list) else exp_raw.get("data", [])
     today_expenses = sum(float(e.get("amount", 0)) for e in records)
@@ -152,6 +152,7 @@ CHECKS = [
 async def run():
     print("Fetching ground truth from live API...")
     await login()
+    await init_pipeline(DATABASE_URL)
     gt = await fetch_ground_truth()
 
     print("\nGround truth values:")
@@ -170,7 +171,7 @@ async def run():
     failures = []
 
     for check in CHECKS:
-        answer = await run_graph(check["question"], str(uuid.uuid4()))
+        answer = await run_pipeline(check["question"], session_id=f"gt-{check['id']}", role="admin")
         expected = gt[check["key"]] if check["key"] else None
 
         if check["type"] == "no_refusal":

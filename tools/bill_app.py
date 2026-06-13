@@ -1,11 +1,17 @@
 import httpx
 import logging
+from tenacity import (
+    retry, stop_after_attempt, wait_exponential,
+    retry_if_exception_type, before_sleep_log,
+)
 from config import BILL_APP_URL, BILL_APP_EMAIL, BILL_APP_PASSWORD
 
 from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
 import json as _json
 import asyncio
 import os
+from tools.dates import today_ist
+from tools.money import rupees, sum_rupees
 
 _IST_OFFSET = _timedelta(hours=5, minutes=30)
 
@@ -73,16 +79,38 @@ async def login() -> None:
     # Same as browser storing httpOnly cookie after login
 
 
+# Transient transport failures (connection drops, read timeouts) are exactly the
+# Railway ↔ Bill-App blips that should be retried, not surfaced to the user.
+# HTTP status errors (401/4xx/5xx) are NOT retried here — 401 is handled by the
+# re-auth path below, and a 4xx won't fix itself.
+_TRANSIENT = (
+    httpx.ConnectError, httpx.ConnectTimeout,
+    httpx.ReadTimeout, httpx.WriteTimeout,
+    httpx.PoolTimeout, httpx.RemoteProtocolError,
+)
+
+
+@retry(
+    reraise=True,
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=0.5, max=4),
+    retry=retry_if_exception_type(_TRANSIENT),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+)
+async def _send(method: str, url: str, **kwargs):
+    return await _client.request(method, url, **kwargs)
+
+
 async def _request(method: str, url: str, **kwargs):
-    """Auto-refreshes Bill-App session on 401 before failing."""
-    response = await _client.request(method, url, **kwargs)
+    """Auto-refreshes Bill-App session on 401; retries transient network errors."""
+    response = await _send(method, url, **kwargs)
     if response.status_code == 401:
         logger.warning("Bill-App session expired — re-authenticating")
         if os.path.exists(COOKIE_FILE):
             os.remove(COOKIE_FILE)
         _client.cookies.clear()
         await login()
-        response = await _client.request(method, url, **kwargs)
+        response = await _send(method, url, **kwargs)
     response.raise_for_status()
     return response
 
@@ -132,10 +160,10 @@ async def get_expenses(from_date: str = None, to_date: str = None) -> dict:
     filtered = [{
         "name":          e.get("name"),
         "type":          e.get("type"),
-        "amount_rupees": e.get("amount", 0),
+        "amount_rupees": rupees(e.get("amount", 0)),
         "date":          (e.get("expenseDate") or "")[:10],
     } for e in all_expenses]
-    total = sum(e["amount_rupees"] for e in filtered)
+    total = sum_rupees(e["amount_rupees"] for e in filtered)
     return {
         "expenses":     filtered,
         "total_rupees": total,
@@ -175,7 +203,7 @@ async def get_all_dishes(
 
 
 async def get_todays_top_items(limit: int = 10, date: str = None) -> dict:
-    target = date or _date.today().isoformat()
+    target = date or today_ist().isoformat()
     data = await get_orders(date=target)
     orders = data if isinstance(data, list) else data.get("data", data.get("orders", []))
 
@@ -204,7 +232,7 @@ async def get_todays_top_items(limit: int = 10, date: str = None) -> dict:
 
 
 async def get_peak_hours_today(date: str = None) -> dict:
-    target = date or _date.today().isoformat()
+    target = date or today_ist().isoformat()
     data = await get_orders(date=target)
     orders = data if isinstance(data, list) else data.get("data", data.get("orders", []))
 
@@ -242,12 +270,12 @@ async def get_all_customer_ledgers(status: str = None) -> dict:
     with_dues = [{
         "name":              c.get("customerName"),
         "phone":             c.get("customerPhone"),
-        "balance_due_rupees": c.get("balanceDue", 0),
+        "balance_due_rupees": rupees(c.get("balanceDue", 0)),
         "last_activity":     (c.get("lastActivity") or "")[:10],
     } for c in customers]
     return {
         "customers_with_dues":      with_dues,
-        "total_outstanding_rupees": sum(c["balance_due_rupees"] for c in with_dues),
+        "total_outstanding_rupees": sum_rupees(c["balance_due_rupees"] for c in with_dues),
         "count":                    len(with_dues),
     }
 
@@ -273,7 +301,7 @@ async def get_daily_summary(date: str) -> dict:
     orders_data = await get_orders(date=date)
     orders = orders_data if isinstance(orders_data, list) else orders_data.get("data", orders_data.get("orders", []))
 
-    revenue = sum(o.get("bills", {}).get("total", 0) for o in orders)
+    revenue = sum_rupees(o.get("bills", {}).get("total", 0) for o in orders)
 
     payment_split = {"cash": 0, "upi": 0, "card": 0, "credit": 0}
     for o in orders:
@@ -301,6 +329,8 @@ async def get_daily_summary(date: str) -> dict:
         "date": date,
         "revenue": revenue,
         "order_count": len(orders),
+        # Pre-computed so the model never does revenue/orders itself (it gets this wrong).
+        "avg_order_value": rupees(revenue / len(orders)) if orders else 0,
         "payment_split": payment_split,
         "top_items_by_qty": top_items,
         "expenses_rupees": expenses_data.get("total_rupees", 0),

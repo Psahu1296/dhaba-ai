@@ -21,8 +21,8 @@ from tools.daily_embedder import search_daily_summaries
 from pipeline.state import PipelineState
 from tools.processors import (
     extract_period_revenue, extract_date_revenue,
-    find_peak_day, flag_expenses, add_date_label,
-    detect_period,
+    flag_expenses, add_date_label,
+    detect_period, summarize_trend, slim_menu,
 )
 
 
@@ -69,16 +69,20 @@ def _post_process(state: PipelineState, results: dict) -> dict:
         if "get_dashboard_kpis" in results:
             period = intent.get("period") or detect_period(hint, query)
             results["get_dashboard_kpis"] = extract_period_revenue(results["get_dashboard_kpis"], period)
+        elif "get_earnings_range" in results:
+            # specific past day — pull just that day's entry into a labelled number
+            target = state["plan"]["steps"][0]["args"].get("from_date", "")
+            results["get_earnings_range"] = extract_date_revenue(results["get_earnings_range"], target)
         elif "get_earnings_history" in results:
-            # past specific date — pull just that day's entry
             target = state["plan"]["steps"][0]["args"].get("target_date", "")
             if target:
                 results["get_earnings_history"] = extract_date_revenue(results["get_earnings_history"], target)
 
     elif name == "historical_trend" and "get_earnings_range" in results:
-        _peak_signals = ("highest", "best day", "peak day", "which day", "konsa din", "most revenue")
-        if any(s in query.lower() for s in _peak_signals):
-            results["get_earnings_range"] = find_peak_day(results["get_earnings_range"])
+        # Always pre-compute trend stats (total, avg, best/worst, direction,
+        # volatility) so the model never aggregates an array itself. summarize_trend
+        # already surfaces best_day, covering the old find_peak_day keyword path.
+        results["get_earnings_range"] = summarize_trend(results["get_earnings_range"])
 
     elif name == "menu" and "get_all_dishes" in results:
         _exp_signals = ("expensive", "costly", "mehenga", "mehnga", "sabse mehenga", "highest price", "most expensive")
@@ -109,6 +113,11 @@ def _post_process(state: PipelineState, results: dict) -> dict:
                     "category": bottom.get("dish_type") or bottom.get("category"),
                     "variants": bottom.get("variants", []),
                 }
+            else:
+                # Plain listing ("veg dishes", "what snacks", etc.) — slim the raw
+                # dish objects so the data block stays small. Bloated raw menus made
+                # small models truncate the answer to a couple of characters.
+                results["get_all_dishes"] = slim_menu(dishes)
 
     elif name == "expenses" and "get_expenses" in results:
         results["get_expenses"] = flag_expenses(results["get_expenses"])

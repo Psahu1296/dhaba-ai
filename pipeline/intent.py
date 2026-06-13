@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Literal, Optional
 from config import OPENAI_API_KEY, OPENAI_BASE_URL, LLM_MODEL, _is_ollama
 from pipeline.state import PipelineState, IntentResult
+from pipeline.intent_rules import prefilter
 
 INTENT_TYPES = Literal[
     "daily_report",      # full report for today
@@ -87,7 +88,27 @@ Respond ONLY with valid JSON in this exact shape:
   "category_filter": "<veg|non-veg|egg or null>",
   "search_term": "<dish name or null>",
   "period": "<today|week|month|year or null>"
-}"""
+}
+
+## Examples (learn the tricky boundaries from these)
+"aaj kitna hua?" → {"intent":"revenue","date_hint":null,"phone":null,"confidence":0.95,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":"today"}
+"kaisa raha aaj?" → {"intent":"daily_report","date_hint":null,"phone":null,"confidence":0.9,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"good day or slow day?" → {"intent":"daily_report","date_hint":null,"phone":null,"confidence":0.85,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"kal ke top items?" → {"intent":"todays_items","date_hint":"kal","phone":null,"confidence":0.95,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"best selling dishes?" → {"intent":"top_dishes","date_hint":null,"phone":null,"confidence":0.9,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"is hafte ka revenue?" → {"intent":"revenue","date_hint":"this week","phone":null,"confidence":0.95,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":"week"}
+"kal kaisa raha?" → {"intent":"past_report","date_hint":"kal","phone":null,"confidence":0.9,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"chai serve karte ho?" → {"intent":"consumables","date_hint":null,"phone":null,"confidence":0.85,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"veg dishes under 50?" → {"intent":"menu","date_hint":null,"phone":null,"confidence":0.95,"max_price":50,"min_price":null,"category_filter":"veg","search_term":null,"period":null}
+"who owes us money?" → {"intent":"customer_dues","date_hint":null,"phone":null,"confidence":0.95,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"what about the second one?" → {"intent":"general","date_hint":null,"phone":null,"confidence":0.8,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"is mahine trend kaisa hai?" → {"intent":"historical_trend","date_hint":"this month","phone":null,"confidence":0.9,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"what were the top selling items 2 days ago?" → {"intent":"todays_items","date_hint":"2 days ago","phone":null,"confidence":0.9,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"yesterday's payment split — cash vs upi?" → {"intent":"past_report","date_hint":"yesterday","phone":null,"confidence":0.9,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"what was yesterday's revenue?" → {"intent":"revenue","date_hint":"yesterday","phone":null,"confidence":0.95,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"what drinks or beverages do you serve?" → {"intent":"consumables","date_hint":null,"phone":null,"confidence":0.85,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}
+"what dal dishes do you serve?" → {"intent":"menu","date_hint":null,"phone":null,"confidence":0.9,"max_price":null,"min_price":null,"category_filter":null,"search_term":"dal","period":null}
+"what snacks/rice/roti do you have?" → {"intent":"menu","date_hint":null,"phone":null,"confidence":0.9,"max_price":null,"min_price":null,"category_filter":null,"search_term":null,"period":null}"""
 
 
 _base = ChatOpenAI(
@@ -96,12 +117,30 @@ _base = ChatOpenAI(
     model=LLM_MODEL,
     temperature=0,
 )
-_llm = (_base.bind(extra_body={"think": False}) if _is_ollama else _base).with_structured_output(
-    _Schema, method="json_mode"
-)
+# Strict json_schema on OpenAI (gpt-4.1-nano supports it — far more reliable
+# than json_mode). Ollama lacks strict schema, so it keeps json_mode.
+if _is_ollama:
+    _llm = _base.bind(extra_body={"think": False}).with_structured_output(_Schema, method="json_mode")
+else:
+    _llm = _base.with_structured_output(_Schema, method="json_schema", strict=True)
+
+
+def _empty_intent() -> IntentResult:
+    return {
+        "intent": "general", "date_hint": None, "phone": None, "confidence": 0.0,
+        "max_price": None, "min_price": None, "category_filter": None,
+        "search_term": None, "period": None,
+    }
 
 
 async def classify_intent(state: PipelineState) -> dict:
+    # 1) Deterministic pre-filter — unambiguous queries skip the LLM entirely.
+    ruled = prefilter(state["query"])
+    if ruled is not None:
+        intent = {**_empty_intent(), **ruled}
+        return {"intent": intent}
+
+    # 2) LLM classification for everything else.
     result: _Schema = await _llm.ainvoke([
         SystemMessage(content=_PROMPT),
         HumanMessage(content=state["query"]),

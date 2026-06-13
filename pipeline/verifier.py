@@ -1,6 +1,8 @@
 from pipeline.state import PipelineState
 
-# Tools where an empty list/result is NORMAL business state — not an error
+# Tools where an empty list/result is NORMAL business state — not an error.
+# Documented for reference; emptiness never blocks a response (empty = zero,
+# not broken). The synthesizer prompt handles narrating empty states.
 _EMPTY_OK = {
     "get_expenses",
     "get_orders",
@@ -8,49 +10,69 @@ _EMPTY_OK = {
     "get_customer_balance",
 }
 
-# Minimum tools that must succeed for each intent — if these fail, response is blocked
-_REQUIRED = {
-    "daily_report":      {"get_dashboard_kpis"},
-    "past_report":       {"get_earnings_history"},
-    "revenue":           {"get_dashboard_kpis", "get_earnings_history"},
-    "expenses":          {"get_expenses"},
-    "top_dishes":        {"get_top_dishes"},
-    "todays_items":      {"get_todays_top_items"},
-    "peak_hours":        {"get_peak_hours_today"},
-    "customer_dues":     {"get_all_customer_ledgers"},
-    "customer_balance":  {"get_customer_balance"},
-    "orders":            {"get_orders"},
-    "menu":              {"get_all_dishes"},
-    "consumables":       {"get_consumables_summary"},
-    "historical_trend":  {"get_earnings_history"},
-    "general":           set(),
-}
+
+# Per-intent data-sanity checks. Each takes the tool results dict and returns a
+# list of human-readable problems. A non-empty list blocks the response — we'd
+# rather say "data unavailable" than emit a confident wrong number.
+def _sanity_issues(intent_name: str, results: dict) -> list[str]:
+    issues: list[str] = []
+
+    def _num(d, *keys):
+        for k in keys:
+            v = (d or {}).get(k)
+            if v is not None:
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    return None
+        return None
+
+    if intent_name in ("daily_report", "past_report"):
+        summary = results.get("get_daily_summary") or {}
+        kpis = results.get("get_dashboard_kpis") or {}
+        orders = _num(summary, "order_count")
+        revenue = _num(summary, "revenue", "revenue_rupees")
+        # Orders exist but revenue is zero → almost certainly a stale/broken
+        # aggregation, not a real free-of-charge day. Block rather than mislead.
+        if orders and orders > 0 and revenue == 0:
+            issues.append("revenue is ₹0 despite orders existing — figures look stale")
+        # daily_report leans on KPIs; a missing today figure is suspicious.
+        if intent_name == "daily_report" and kpis and _num(kpis, "today_revenue_rupees", "today") is None:
+            issues.append("dashboard returned no today revenue")
+
+    return issues
 
 
 def verify_results(state: PipelineState) -> dict:
     intent_name = state["intent"]["intent"]
+    primary_tool = state.get("primary_tool")
     raw = state["raw_results"]
     results = raw["results"]
     errors = raw["errors"]
 
-    issues = []
+    issues: list[str] = []
     passed = True
 
-    # Check tool errors
+    # Surface every tool error for the trace/log.
     for tool, err in errors.items():
         issues.append(f"{tool} failed: {err}")
 
-    # If any REQUIRED tool errored → block the response
-    required = _REQUIRED.get(intent_name, set())
-    failed_required = required & set(errors.keys())
-    if failed_required:
+    # The answer depends on the primary tool. If it never produced a result
+    # (errored, or simply absent), block — downstream prose would be ungrounded.
+    if primary_tool and primary_tool not in results:
         passed = False
-        issues.append(f"Critical tools unavailable: {', '.join(failed_required)}")
+        issues.append(f"Critical tool unavailable: {primary_tool}")
 
-    # If ALL tools failed → Bill-App is likely down
+    # If EVERY tool failed, Bill-App is likely unreachable.
     if errors and not results:
         passed = False
         issues.append("Bill-App appears to be unreachable — all tools failed")
+
+    # Data-sanity checks (e.g. orders>0 but revenue==0).
+    sanity = _sanity_issues(intent_name, results)
+    if sanity:
+        passed = False
+        issues.extend(sanity)
 
     return {
         "verified": {
