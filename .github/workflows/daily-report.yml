@@ -1,0 +1,22 @@
+name: Trigger Daily Report
+
+on:
+  schedule:
+    - cron: '30 17 * * *'  # 17:30 UTC = 23:00 IST
+  workflow_dispatch:        # manual trigger for testing
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake + generate report
+        run: |
+          curl -s -X POST https://dhaba-ai.onrender.com/admin/report/generate \
+            -H "X-API-Key: ${{ secrets.DHABA_API_KEY }}" \
+            --max-time 120 --retry 2
+
+      - name: Embed today's summary
+        run: |
+          curl -s -X POST https://dhaba-ai.onrender.com/admin/embed-day \
+            -H "X-API-Key: ${{ secrets.DHABA_API_KEY }}" \
+            --max-time 120 --retry 2
