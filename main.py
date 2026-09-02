@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, Security, Request
+from fastapi import FastAPI, Depends, Header, HTTPException, Security, Request
 from fastapi.security import APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -83,9 +83,16 @@ async def require_api_key(key: str = Security(api_key_header)):
 async def get_current_user(
     key: str = Security(api_key_header),
     bearer: HTTPAuthorizationCredentials = Security(bearer_scheme),
+    x_scope: str | None = Header(default=None, alias="X-Scope"),
 ) -> dict:
     if key and key == API_KEY:
-        return {"role": "admin", "name": "API User"}
+        # maestro is the only caller on this path (server-to-server, shared
+        # API_KEY). X-Scope lets it flag a request as coming from a demo
+        # (interviewer) session so the pipeline can gate customer-PII tools —
+        # see pipeline/planner.py's _DEMO_BLOCKED_INTENTS. Only this path reads
+        # it: a real Bill-App JWT login below is never a demo session.
+        role = "demo" if x_scope == "demo" else "admin"
+        return {"role": role, "name": "API User"}
     if bearer:
         try:
             payload = pyjwt.decode(bearer.credentials, JWT_SECRET, algorithms=["HS256"])

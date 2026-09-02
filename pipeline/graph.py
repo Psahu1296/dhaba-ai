@@ -29,6 +29,21 @@ def _needs_clarification(state: dict) -> bool:
     )
 
 
+# Mirrors planner.py's _DEMO_BLOCKED_INTENTS — planner already emptied the plan
+# so no tool ran; this short-circuits BEFORE the synthesizer too, so a demo
+# session gets a deterministic refusal instead of an LLM asked to say something
+# about zero data (cheaper, and one less place a jailbreak could work around).
+_DEMO_BLOCKED_INTENTS = {"customer_dues", "customer_balance"}
+_DEMO_BLOCKED_MSG = (
+    "Customer account details aren't available in demo mode — happy to help with "
+    "revenue, dishes, orders, or expenses instead."
+)
+
+
+def _is_demo_blocked(state: dict) -> bool:
+    return state.get("role") == "demo" and (state.get("intent") or {}).get("intent") in _DEMO_BLOCKED_INTENTS
+
+
 # Intents complex enough to justify the stronger (escalation) model for synthesis.
 _ESCALATE_INTENTS = {"historical_trend"}
 
@@ -94,6 +109,11 @@ async def run_pipeline(message: str, session_id: str, role: str = "admin") -> st
     state = await _run_stages(message, role)
     _trace(state, int((time.monotonic() - t0) * 1000))
 
+    if _is_demo_blocked(state):
+        logger.info("pipeline | demo session blocked from intent=%s", state["intent"]["intent"])
+        await memory.save(session_id, message, _DEMO_BLOCKED_MSG)
+        return _DEMO_BLOCKED_MSG
+
     if _needs_clarification(state):
         logger.info("pipeline | low confidence, asking to clarify | query=%r", message[:80])
         await memory.save(session_id, message, _CLARIFY_MSG)
@@ -118,6 +138,12 @@ async def run_pipeline_stream(message: str, session_id: str, role: str = "admin"
     history = await memory.load(session_id)
     state = await _run_stages(message, role)
     _trace(state, int((time.monotonic() - t0) * 1000))
+
+    if _is_demo_blocked(state):
+        logger.info("pipeline | demo session blocked from intent=%s", state["intent"]["intent"])
+        await memory.save(session_id, message, _DEMO_BLOCKED_MSG)
+        yield _DEMO_BLOCKED_MSG
+        return
 
     if _needs_clarification(state):
         logger.info("pipeline | low confidence, asking to clarify | query=%r", message[:80])
