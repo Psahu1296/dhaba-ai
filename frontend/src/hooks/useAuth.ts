@@ -49,10 +49,19 @@ export function useAuth() {
     }
   }, [])
 
+  // "Try the demo": no credentials at all — the server treats the session as a guest
+  // (customer data blocked, rate-limited). Kept in localStorage like a real login.
+  const loginAsGuest = useCallback(() => {
+    const guest: AuthUser = { token: '', role: 'demo', name: 'Guest' }
+    localStorage.setItem(AUTH_KEY, JSON.stringify(guest))
+    setError(null)
+    setUser(guest)
+  }, [])
+
   const logout = useCallback(() => {
     localStorage.removeItem(AUTH_KEY)
     setUser(null)
   }, [])
 
-  return { user, error, isLoading, login, logout }
+  return { user, error, isLoading, login, loginAsGuest, logout }
 }

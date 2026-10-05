@@ -8,7 +8,7 @@ import { BarChart3, UtensilsCrossed, Banknote, PackageOpen, Sparkles, BrainCircu
 import type { Mode } from './types'
 
 export default function App() {
-  const { user, error: authError, isLoading: authLoading, login, logout } = useAuth()
+  const { user, error: authError, isLoading: authLoading, login, loginAsGuest, logout } = useAuth()
   const { messages, mode, setMode, isLoading, sessionId, totalCharsSaved, sendMessage, sendFeedback, clearChat, stopGeneration, loadDailyReport } = useChat()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -17,8 +17,16 @@ export default function App() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const isGuest = user?.role === 'demo'
+
+  // Guests only get agent mode: stream mode is the legacy agent, which the server keeps for
+  // signed-in staff because it has no customer-data gating.
+  useEffect(() => {
+    if (isGuest && mode !== 'agent') setMode('agent')
+  }, [isGuest, mode, setMode])
+
   if (!user) {
-    return <LoginPage onLogin={login} error={authError} isLoading={authLoading} />
+    return <LoginPage onLogin={login} onGuest={loginAsGuest} error={authError} isLoading={authLoading} />
   }
 
   return (
@@ -57,7 +65,7 @@ export default function App() {
 
           <div className={`${isMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row items-stretch md:items-center justify-center md:justify-end gap-2 md:gap-3 w-full md:w-auto md:pt-0 md:mt-0 absolute md:static top-full left-0 right-0 bg-black/95 md:bg-transparent backdrop-blur-2xl md:backdrop-blur-none border-b border-white/10 md:border-none p-4 md:p-0 shadow-xl md:shadow-none z-50`}>
             <div className="flex w-full md:w-auto items-center gap-1 p-1 bg-black/40 rounded-[14px] border border-white/5 shadow-inner backdrop-blur-sm">
-              {(['stream', 'agent'] as Mode[]).map(m => {
+              {((isGuest ? ['agent'] : ['stream', 'agent']) as Mode[]).map(m => {
                 const isActive = mode === m
                 const Icon = m === 'stream' ? Zap : BrainCircuit
                 return (

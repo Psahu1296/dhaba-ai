@@ -5,7 +5,11 @@ import os
 import httpx
 
 BASE_URL = os.getenv("EVAL_API_BASE", "https://dhaba-ai.onrender.com")
-API_KEY = os.getenv("EVAL_API_KEY", "3e263b3904fb1a7def01b56860ce66369ad73bc04898eb545f295de0a1717297")
+# From the environment only — the server key must never be in the repo. Until 2026-10-06 the
+# real key sat here as a fallback in a public repo; it has been rotated.
+API_KEY = os.getenv("EVAL_API_KEY")
+if not API_KEY:
+    sys.exit("EVAL_API_KEY is not set — put the server's API_KEY in .env as EVAL_API_KEY (never in code).")
 
 QUESTIONS_FILE = os.path.join(os.path.dirname(__file__), "questions.json")
 RESULTS_FILE = os.path.join(os.path.dirname(__file__), "results.json")
