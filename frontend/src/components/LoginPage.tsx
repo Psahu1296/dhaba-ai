@@ -2,11 +2,12 @@ import { useState } from 'react'
 
 interface Props {
   onLogin: (email: string, password: string) => Promise<boolean>
+  onGuest: () => void
   error: string | null
   isLoading: boolean
 }
 
-export function LoginPage({ onLogin, error, isLoading }: Props) {
+export function LoginPage({ onLogin, onGuest, error, isLoading }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -70,6 +71,21 @@ export function LoginPage({ onLogin, error, isLoading }: Props) {
 
         <p className="text-zinc-600 text-[11px] text-center">
           Use your Bill-App credentials to sign in.
+        </p>
+
+        <div className="w-full flex items-center gap-3 text-zinc-700 text-[10px] uppercase tracking-[0.2em]">
+          <span className="h-px flex-1 bg-white/10" /> or <span className="h-px flex-1 bg-white/10" />
+        </div>
+
+        <button
+          type="button"
+          onClick={onGuest}
+          className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-zinc-200 font-bold text-sm uppercase tracking-wider hover:bg-white/10 hover:border-orange-500/30 transition-all"
+        >
+          Try the demo
+        </button>
+        <p className="text-zinc-600 text-[11px] text-center -mt-5">
+          Live restaurant data · customer details hidden
         </p>
       </div>
     </div>

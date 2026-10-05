@@ -1,7 +1,9 @@
 import asyncio
 import logging
+import time
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException, Security, Request
+from fastapi import FastAPI, Depends, Header, HTTPException, Security, Request
 from fastapi.security import APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -80,19 +82,78 @@ async def require_api_key(key: str = Security(api_key_header)):
     return key
 
 
+# Guests: the public "Try the demo" on the frontend. A request with NO credentials at all is a
+# demo session — the pipeline blocks customer-PII intents for role "demo" (planner.py
+# _DEMO_BLOCKED_INTENTS) and the legacy /chat routes refuse it. Until 2026-10-06 the frontend
+# shipped API_KEY in its bundle (VITE_API_KEY) as the anonymous fallback, which made every
+# visitor an *admin*: customer ledgers and /admin/* were open to anyone reading the JS.
+GUEST_LIMIT = 30            # requests per window per client IP
+GUEST_WINDOW_S = 3600
+_guest_hits: dict[str, deque] = defaultdict(deque)
+
+
+def _client_ip(request: Request) -> str:
+    """Behind Render's proxy request.client is the proxy; the edge's headers name the caller.
+    Forgeable — that only lets a client dodge its own limit, never gain a role."""
+    for header in ("true-client-ip", "cf-connecting-ip"):
+        if request.headers.get(header):
+            return request.headers[header]
+    forwarded = request.headers.get("x-forwarded-for", "")
+    return forwarded.split(",")[0].strip() or (request.client.host if request.client else "unknown")
+
+
+def _guest_allowed(ip: str, now: float) -> bool:
+    hits = _guest_hits[ip]
+    while hits and now - hits[0] > GUEST_WINDOW_S:
+        hits.popleft()
+    if len(hits) >= GUEST_LIMIT:
+        return False
+    hits.append(now)
+    return True
+
+
 async def get_current_user(
+    request: Request,
     key: str = Security(api_key_header),
     bearer: HTTPAuthorizationCredentials = Security(bearer_scheme),
+    x_scope: str | None = Header(default=None, alias="X-Scope"),
 ) -> dict:
     if key and key == API_KEY:
-        return {"role": "admin", "name": "API User"}
+        # maestro is the only caller on this path (server-to-server, shared
+        # API_KEY). X-Scope lets it flag a request as coming from a demo
+        # (interviewer) session so the pipeline can gate customer-PII tools —
+        # see pipeline/planner.py's _DEMO_BLOCKED_INTENTS. Only this path reads
+        # it: a real Bill-App JWT login below is never a demo session.
+        role = "demo" if x_scope == "demo" else "admin"
+        return {"role": role, "name": "API User"}
     if bearer:
         try:
             payload = pyjwt.decode(bearer.credentials, JWT_SECRET, algorithms=["HS256"])
             return {"role": payload.get("role", "staff"), "name": payload.get("name", "")}
         except pyjwt.PyJWTError:
             pass
-    raise HTTPException(status_code=401, detail="Invalid or missing auth")
+    # A credential that was sent but didn't check out stays a 401 — an expired login must never
+    # quietly continue as a guest. Only a request with no credentials at all is a guest.
+    if key or bearer:
+        raise HTTPException(status_code=401, detail="Invalid or missing auth")
+    if not _guest_allowed(_client_ip(request), time.monotonic()):
+        raise HTTPException(status_code=429, detail="Demo limit reached — try again in an hour.")
+    return {"role": "demo", "name": "Guest"}
+
+
+async def require_member(user: dict = Depends(get_current_user)) -> dict:
+    """Staff/admin only. The legacy /chat agent (agent.py) has get_customer_balance with no
+    demo gating, so guests and demo sessions are kept off it."""
+    if user["role"] == "demo":
+        raise HTTPException(status_code=403, detail="Sign in to use this mode.")
+    return user
+
+
+def _thread_for(user: dict, session_id: str | None) -> str:
+    """Demo threads live in their own namespace, so a guest can't open a staff conversation
+    (pipeline_history) by sending its session_id."""
+    sid = session_id or str(uuid.uuid4())
+    return f"demo:{sid}" if user["role"] == "demo" and not sid.startswith("demo:") else sid
 
 
 class ChatRequest(BaseModel):
@@ -161,23 +222,23 @@ async def trigger_embed(date: str = None):
     return {"status": "embedded", "date": date or "yesterday"}
 
 
-@app.get("/dishes/top")
+@app.get("/dishes/top", dependencies=[Depends(get_current_user)])
 async def top_dishes(limit: int = 5):
     return await get_top_dishes(limit)
 
 
-@app.get("/kpis")
+@app.get("/kpis", dependencies=[Depends(get_current_user)])
 async def kpis():
     return await get_dashboard_kpis()
 
 
-@app.post("/chat", dependencies=[Depends(get_current_user)])
+@app.post("/chat", dependencies=[Depends(require_member)])
 async def chat(req: ChatRequest):
     answer = await run_agent(req.message)
     return {"answer": answer, "toon_chars_saved": codec.total_chars_saved()}
 
 
-@app.post("/chat/stream", dependencies=[Depends(get_current_user)])
+@app.post("/chat/stream", dependencies=[Depends(require_member)])
 async def chat_stream_endpoint(req: ChatRequest):
     async def generate():
         async for token in run_agent_stream(req.message):
@@ -187,7 +248,7 @@ async def chat_stream_endpoint(req: ChatRequest):
 
 @app.post("/agent/chat")
 async def agent_chat(req: ChatRequest, user: dict = Depends(get_current_user)):
-    thread_id = req.session_id or str(uuid.uuid4())
+    thread_id = _thread_for(user, req.session_id)
     answer = await run_pipeline(req.message, thread_id, role=user["role"])
     # NOTE: the pipeline sends clean JSON to the synthesizer (not TOON), so no
     # toon_chars_saved is reported here — it would always be a meaningless 0.
@@ -196,14 +257,14 @@ async def agent_chat(req: ChatRequest, user: dict = Depends(get_current_user)):
 
 @app.post("/agent/chat/stream")
 async def agent_chat_stream(req: ChatRequest, user: dict = Depends(get_current_user)):
-    thread_id = req.session_id or str(uuid.uuid4())
+    thread_id = _thread_for(user, req.session_id)
     async def generate():
         async for token in run_pipeline_stream(req.message, thread_id, role=user["role"]):
             yield token
     return StreamingResponse(generate(), media_type="text/plain")
 
 
-@app.get("/report/latest")
+@app.get("/report/latest", dependencies=[Depends(get_current_user)])
 async def get_report():
     from db import get_latest_report
     report = await get_latest_report()

@@ -8,6 +8,7 @@ Usage:
   python3 evals/test_flows.py --full    # also print full AI responses
 """
 import asyncio
+import os
 import re
 import sys
 import uuid
@@ -15,7 +16,10 @@ import uuid
 import httpx
 
 API_BASE = "https://dhaba-ai-production.up.railway.app"
-API_KEY = "3e263b3904fb1a7def01b56860ce66369ad73bc04898eb545f295de0a1717297"
+# From the environment only (the old hardcoded key was public and has been rotated).
+API_KEY = os.getenv("EVAL_API_KEY")
+if not API_KEY:
+    sys.exit("EVAL_API_KEY is not set — put the server's API_KEY in .env as EVAL_API_KEY (never in code).")
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 TOON_RE = re.compile(r"\[TOON_SAVED:\d+\]$")

@@ -18,12 +18,23 @@ def _resolve_date(hint: str | None) -> dict:
     return {"date": resolve_day(hint, default_today=True)}
 
 
+# Customer PII (phone numbers, ledger balances) is off-limits for role="demo"
+# (an interviewer credential minted by maestro, see main.py's get_current_user).
+# Checked here, before any step is planned, so get_all_customer_ledgers /
+# get_customer_balance never run at all for a demo session — not filtered
+# after the fact, never fetched in the first place.
+_DEMO_BLOCKED_INTENTS = {"customer_dues", "customer_balance"}
+
+
 def plan_workflow(state: PipelineState) -> dict:
     intent: IntentResult = state["intent"]
     name = intent["intent"]
     hint = intent.get("date_hint")
     phone = intent.get("phone")
     query = state["query"]
+
+    if state.get("role") == "demo" and name in _DEMO_BLOCKED_INTENTS:
+        return {"plan": ExecutionPlan(steps=[]), "primary_tool": None}
 
     today = today_ist().isoformat()
     dates = _resolve_date(hint)

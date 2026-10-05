@@ -22,11 +22,14 @@ function getAuthHeaders(): Record<string, string> {
     const raw = localStorage.getItem('dhaba_auth')
     if (raw) {
       const { token } = JSON.parse(raw)
-      return { Authorization: `Bearer ${token}` }
+      // A guest (demo) session has no token: send no credentials, and the server treats the
+      // request as a rate-limited demo with customer data blocked.
+      if (token) return { Authorization: `Bearer ${token}` }
     }
   } catch {}
-  const fallback = import.meta.env.VITE_API_KEY ?? ''
-  return fallback ? { 'X-API-Key': fallback } : {}
+  // Never a key here: anything in import.meta.env is compiled into the public bundle. Until
+  // 2026-10-06 this sent VITE_API_KEY — the server's own key — which made every visitor admin.
+  return {}
 }
 
 function uid() {
